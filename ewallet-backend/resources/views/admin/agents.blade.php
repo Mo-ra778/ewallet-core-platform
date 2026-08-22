@@ -1,131 +1,87 @@
 @extends('layouts.admin')
 
-@section('title', 'شبكة الوكلاء المعتمدين')
-@section('page_title', 'إدارة شبكة الوكلاء ومراكز الصرافة')
+@section('title', 'إدارة شبكة الوكلاء المعتمدين')
+@section('page_title', 'مراكز الصرافة ونقاط تقديم الخدمة')
 
 @section('content')
 <div class="space-y-6">
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- New Agent Formulation Card -->
-        <div class="lg:col-span-1 bg-surface-card p-5 rounded-lg border border-surface-border h-fit space-y-4">
-            <div class="pb-3 border-b border-surface-border flex items-center justify-between">
-                <h3 class="text-xs font-bold text-ink-primary">تسجيل واعتماد وكيل جديد</h3>
-                <span class="text-[10px] text-ink-muted font-mono">NEW AGENT</span>
-            </div>
-
-            <form action="{{ route('admin.agents.create') }}" method="POST" class="space-y-3">
-                @csrf
-                <div>
-                    <label class="block text-xs font-semibold text-ink-primary mb-1">اسم المركز / المحل</label>
-                    <input type="text" name="full_name" required placeholder="مثال: شركة البركة للصرافة"
-                           class="w-full px-3 py-1.5 text-xs bg-surface-base border border-surface-border rounded text-ink-primary focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-ink-primary mb-1">رقم هاتف الوكيل</label>
-                    <input type="text" name="phone" required placeholder="77xxxxxxx" dir="ltr"
-                           class="w-full px-3 py-1.5 text-xs bg-surface-base border border-surface-border rounded text-ink-primary focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition text-right">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-ink-primary mb-1">كلمة المرور</label>
-                    <input type="password" name="password" required placeholder="••••••••"
-                           class="w-full px-3 py-1.5 text-xs bg-surface-base border border-surface-border rounded text-ink-primary focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition">
-                </div>
-
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-xs font-semibold text-ink-primary mb-1">الرصيد الافتتاحي</label>
-                        <input type="number" step="0.01" min="0" name="initial_balance" value="0"
-                               class="w-full px-3 py-1.5 text-xs bg-surface-base border border-surface-border rounded text-ink-primary num-font focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        
+        <!-- Agents Master Table (2 Columns) -->
+        <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 shadow-soft overflow-hidden">
+            <div class="px-6 py-4.5 border-b border-slate-100 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75-.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349M3.75 21V9.349m0 0a3.001 3.001 0 0 0 3.75-.615A2.993 2.993 0 0 0 9.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 0 0 2.25 1.016c.896 0 1.7-.393 2.25-1.015a3.001 3.001 0 0 0 3.75.614m-16.5 0a3.004 3.004 0 0 1-.621-4.72l1.189-1.19A1.5 1.5 0 0 1 5.378 3h13.243a1.5 1.5 0 0 1 1.06.44l1.19 1.189a3 3 0 0 1-.621 4.72M6.75 18h3.75a.75.75 0 0 0 .75-.75V13.5a.75.75 0 0 0-.75-.75H6.75a.75.75 0 0 0-.75.75v3.75c0 .414.336.75.75.75Z"/></svg>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-ink-primary mb-1">العملة</label>
-                        <select name="currency" class="w-full px-2.5 py-1.5 text-xs bg-surface-base border border-surface-border rounded text-ink-primary font-semibold focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 transition">
-                            <option value="SAR">SAR - سعودي</option>
-                            <option value="YER">YER - يمني</option>
-                            <option value="USD">USD - دولار</option>
-                        </select>
+                        <h3 class="text-xs font-bold text-slate-900">سجل وكلاء الخدمة المعتمدين</h3>
+                        <p class="text-[11px] text-slate-400 mt-0.5">مراكز السحب والإيداع النقدي المصرح لها</p>
                     </div>
                 </div>
-
-                <button type="submit" class="w-full bg-slate-900 hover:bg-black text-white font-medium py-2 px-3 rounded text-xs transition mt-2">
-                    إنشاء واعتماد حساب الوكيل
-                </button>
-            </form>
-        </div>
-
-        <!-- Agents Registry Ledger -->
-        <div class="lg:col-span-2 bg-surface-card rounded-lg border border-surface-border overflow-hidden">
-            <div class="px-5 py-4 border-b border-surface-border flex items-center justify-between">
-                <div>
-                    <h3 class="text-xs font-bold text-ink-primary">سجل الوكلاء المعتمدين في النظام</h3>
-                    <p class="text-[11px] text-ink-muted mt-0.5">المراكز المصرح لها بتنفيذ عمليات الإيداع والسحب النقدي</p>
-                </div>
-                <span class="text-xs font-mono text-ink-muted font-semibold">{{ $agents->total() }} وكيل</span>
+                <span class="num-font text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-200/60">{{ $agents->total() }} وكيل</span>
             </div>
 
             <div class="overflow-x-auto">
                 <table class="w-full text-right text-xs">
-                    <thead class="bg-surface-subtle text-ink-secondary font-semibold border-b border-surface-border">
+                    <thead class="bg-slate-50/80 text-slate-500 font-bold border-b border-slate-100">
                         <tr>
-                            <th class="py-3 px-4">اسم المركز / الوكيل</th>
-                            <th class="py-3 px-4">رقم الهاتف</th>
-                            <th class="py-3 px-4">الرصيد النقدي</th>
-                            <th class="py-3 px-4">الحالة</th>
-                            <th class="py-3 px-4">تاريخ الاعتماد</th>
-                            <th class="py-3 px-4 text-center">التحكم</th>
+                            <th class="py-4 px-6">بيانات المركز / الوكيل</th>
+                            <th class="py-4 px-6">الهاتف</th>
+                            <th class="py-4 px-6">رصيد العهدة</th>
+                            <th class="py-4 px-6">الحالة</th>
+                            <th class="py-4 px-6 text-center">التحكم</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-surface-border">
-                        @forelse($agents as $ag)
-                        <tr class="hover:bg-surface-base/80 transition">
-                            <td class="py-3 px-4">
-                                <div class="font-semibold text-ink-primary">{{ $ag->full_name }}</div>
-                                <div class="text-[10px] text-ink-muted font-mono">{{ $ag->id }}</div>
+                    <tbody class="divide-y divide-slate-100">
+                        @forelse($agents as $agent)
+                        <tr class="hover:bg-slate-50/60 transition-colors">
+                            <td class="py-4 px-6">
+                                <div class="font-bold text-slate-900">{{ $agent->full_name }}</div>
+                                <div class="text-[10px] text-slate-400 font-mono" dir="ltr">UUID: {{ substr($agent->id, 0, 8) }}...</div>
                             </td>
-                            <td class="py-3 px-4 num-font font-medium text-slate-800" dir="ltr">{{ $ag->phone }}</td>
-                            <td class="py-3 px-4 font-bold text-ink-primary num-font text-sm">
-                                {{ number_format($ag->balance, 2) }} <span class="text-[10px] font-normal text-ink-muted">ر.ي</span>
+                            <td class="py-4 px-6 font-medium text-slate-800 num-font" dir="ltr">
+                                {{ $agent->phone }}
                             </td>
-                            <td class="py-3 px-4">
-                                @if($ag->status === 'active')
-                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-fin-tealBg text-fin-teal border border-fin-tealBorder">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-fin-teal"></span>
+                            <td class="py-4 px-6 font-bold text-slate-900 num-font text-sm">
+                                {{ number_format($agent->balance, 2) }} <span class="text-xs font-bold text-teal-700 font-sans">ر.ي</span>
+                            </td>
+                            <td class="py-4 px-6">
+                                @if($agent->status === 'active')
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
                                         مفعّل
                                     </span>
                                 @else
-                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-fin-crimsonBg text-fin-crimson border border-fin-crimsonBorder">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-fin-crimson"></span>
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-800 border border-rose-200/60">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
                                         معلّق
                                     </span>
                                 @endif
                             </td>
-                            <td class="py-3 px-4 num-font text-ink-muted">{{ $ag->created_at->format('Y-m-d') }}</td>
-                            <td class="py-3 px-4 text-center">
-                                @if($ag->status === 'active')
-                                    <form action="{{ route('admin.agents.status', $ag->id) }}" method="POST" class="inline">
-                                        @csrf
+                            <td class="py-4 px-6 text-center">
+                                <form action="{{ route('admin.agents.status', $agent->id) }}" method="POST" class="inline">
+                                    @csrf
+                                    @if($agent->status === 'active')
                                         <input type="hidden" name="status" value="suspended">
-                                        <button type="submit" onclick="return confirm('تأكيد تعليق حساب هذا الوكيل؟')" class="text-fin-crimson hover:bg-fin-crimsonBg border border-surface-border hover:border-fin-crimsonBorder px-2.5 py-1 rounded text-xs font-medium transition">
+                                        <button type="submit" onclick="return confirm('تأكيد تعليق مركز الوكيل؟')" 
+                                                class="text-rose-600 hover:bg-rose-50 font-semibold text-[11px] px-3 py-1.5 rounded-xl transition border border-rose-200/80 shadow-xs">
                                             تعليق
                                         </button>
-                                    </form>
-                                @else
-                                    <form action="{{ route('admin.agents.status', $ag->id) }}" method="POST" class="inline">
-                                        @csrf
+                                    @else
                                         <input type="hidden" name="status" value="active">
-                                        <button type="submit" class="bg-slate-900 hover:bg-black text-white px-2.5 py-1 rounded text-xs font-medium transition">
-                                            إعادة التفعيل
+                                        <button type="submit" 
+                                                class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] px-3 py-1.5 rounded-xl transition shadow-xs">
+                                            إعادة تفعيل
                                         </button>
-                                    </form>
-                                @endif
+                                    @endif
+                                </form>
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="py-8 text-center text-ink-muted">لا يوجد وكلاء معتمدين مسجلين في النظام.</td>
+                            <td colspan="5" class="py-12 text-center text-slate-400">لم يتم تسجيل أي وكلاء في النظام حتى الآن.</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -133,11 +89,51 @@
             </div>
 
             @if($agents->hasPages())
-            <div class="p-3.5 border-t border-surface-border">
+            <div class="p-4 border-t border-slate-100 bg-slate-50/50">
                 {{ $agents->links() }}
             </div>
             @endif
         </div>
+
+        <!-- Add New Agent Form (1 Column) -->
+        <div class="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/80 shadow-soft space-y-5">
+            <div class="pb-4 border-b border-slate-100">
+                <h3 class="text-xs font-bold text-slate-900">تسجيل مركز وكيل جديد</h3>
+                <p class="text-[11px] text-slate-400 mt-0.5">إصدار ترخيص لنقطة خدمة وإيداع جديدة</p>
+            </div>
+
+            <form action="{{ route('admin.agents.create') }}" method="POST" class="space-y-4">
+                @csrf
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">اسم الوكيل / المركز الكامل</label>
+                    <input type="text" name="full_name" value="{{ old('full_name') }}" required placeholder="مثال: صرافة التضامن - فرع التحرير" 
+                           class="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">رقم هاتف الدخول للوكيل</label>
+                    <input type="text" name="phone" value="{{ old('phone') }}" required placeholder="مثال: 777999888" dir="ltr"
+                           class="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition text-right num-font">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">كلمة المرور الابتدائية</label>
+                    <input type="password" name="password" required placeholder="••••••••" 
+                           class="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">الرصيد الافتتاحي للعهدة (اختياري)</label>
+                    <input type="number" step="0.01" min="0" name="initial_balance" value="{{ old('initial_balance', 0) }}" 
+                           class="w-full px-3.5 py-2 text-sm font-bold bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 num-font focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
+                </div>
+
+                <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition shadow-xs mt-2">
+                    إنشاء واعتماد حساب الوكيل
+                </button>
+            </form>
+        </div>
+
     </div>
 
 </div>

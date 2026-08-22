@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" class="h-full">
+<html lang="ar" dir="rtl" class="h-full bg-slate-50/60">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'محطة الوكيل المعتمد') — محفظتي للخدمات النقدية</title>
     
-    <!-- Professional Typography -->
+    <!-- Modern Typography: IBM Plex Sans Arabic + Plus Jakarta Sans for Financial Numerals -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -20,28 +20,19 @@
                         mono: ['"Plus Jakarta Sans"', 'monospace'],
                     },
                     colors: {
-                        canvas: '#F8FAFC',
-                        surface: '#FFFFFF',
-                        subtle: '#F1F5F9',
-                        line: '#E2E8F0',
-                        lineHover: '#CBD5E1',
-                        ink: {
-                            900: '#0F172A',
-                            700: '#334155',
-                            500: '#64748B',
-                            400: '#94A3B8',
-                        },
-                        fin: {
-                            teal: '#0F766E',
-                            tealBg: '#F0FDFA',
-                            tealLine: '#CCFBF1',
-                            amber: '#B45309',
-                            amberBg: '#FFFBEB',
-                            amberLine: '#FEF3C7',
-                            ruby: '#BE123C',
-                            rubyBg: '#FFF1F2',
-                            rubyLine: '#FFE4E6',
+                        brand: {
+                            50: '#F0FDFA',
+                            100: '#CCFBF1',
+                            500: '#14B8A6',
+                            600: '#0D9488',
+                            700: '#0F766E',
+                            800: '#115E59',
+                            900: '#134E4A',
                         }
+                    },
+                    boxShadow: {
+                        'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02)',
+                        'card': '0 0 0 1px rgba(226, 232, 240, 0.8), 0 1px 3px 0 rgba(0, 0, 0, 0.02)',
                     }
                 }
             }
@@ -50,79 +41,96 @@
     <style>
         body { font-family: 'IBM Plex Sans Arabic', sans-serif; }
         .num-font { font-family: 'Plus Jakarta Sans', monospace; font-variant-numeric: tabular-nums; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 6px; }
     </style>
 </head>
-<body class="bg-canvas text-ink-900 min-h-full flex flex-col antialiased selection:bg-fin-teal selection:text-white">
+<body class="text-slate-800 min-h-full flex flex-col antialiased selection:bg-brand-600 selection:text-white">
 
-    <!-- Top Pure Light Cashier Navbar -->
-    <header class="bg-surface border-b border-line sticky top-0 z-30">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6">
-            <div class="flex justify-between h-16 items-center">
-                <!-- Brand Identity -->
+    <!-- Seamless Sticky Cashier Header -->
+    <header class="bg-white/85 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-20 items-center gap-4">
+                
+                <!-- Brand & Terminal Identity -->
                 <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-lg bg-fin-teal text-white flex items-center justify-center font-bold text-xs shadow-sm">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349M3.75 21V9.349m0 0a3.001 3.001 0 0 0 3.75-.615A2.993 2.993 0 0 0 9.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 0 0 2.25 1.016c.896 0 1.7-.393 2.25-1.015a3.001 3.001 0 0 0 3.75.614m-16.5 0a3.004 3.004 0 0 1-.621-4.72l1.189-1.19A1.5 1.5 0 0 1 5.378 3h13.243a1.5 1.5 0 0 1 1.06.44l1.19 1.189a3 3 0 0 1-.621 4.72M6.75 18h3.75a.75.75 0 0 0 .75-.75V13.5a.75.75 0 0 0-.75-.75H6.75a.75.75 0 0 0-.75.75v3.75c0 .414.336.75.75.75Z"/></svg>
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-800 to-brand-600 text-white flex items-center justify-center shadow-md shadow-brand-700/20 flex-shrink-0">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349M3.75 21V9.349m0 0a3.001 3.001 0 0 0 3.75-.615A2.993 2.993 0 0 0 9.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 0 0 2.25 1.016c.896 0 1.7-.393 2.25-1.015a3.001 3.001 0 0 0 3.75.614m-16.5 0a3.004 3.004 0 0 1-.621-4.72l1.189-1.19A1.5 1.5 0 0 1 5.378 3h13.243a1.5 1.5 0 0 1 1.06.44l1.19 1.189a3 3 0 0 1-.621 4.72M6.75 18h3.75a.75.75 0 0 0 .75-.75V13.5a.75.75 0 0 0-.75-.75H6.75a.75.75 0 0 0-.75.75v3.75c0 .414.336.75.75.75Z"/>
+                        </svg>
                     </div>
-                    <div class="leading-tight">
-                        <span class="text-xs font-bold text-ink-900 block">محطة الوكيل المعتمد</span>
-                        <span class="text-[10px] text-ink-500 font-medium block">خدمات الإيداع والسحب النقدي</span>
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <h1 class="text-sm font-bold text-slate-900 tracking-tight">محطة الوكيل المعتمد</h1>
+                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/70">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                متصل
+                            </span>
+                        </div>
+                        <span class="text-[11px] text-slate-400 font-medium block">خدمات الإيداع والتسليم النقدي الفوري</span>
                     </div>
                 </div>
 
-                <!-- Navigation Tabs -->
-                <nav class="hidden md:flex items-center gap-1.5 text-xs font-medium">
-                    <a href="{{ route('agent.dashboard') }}" class="px-3.5 py-2 rounded-lg transition {{ request()->routeIs('agent.dashboard') ? 'bg-fin-teal text-white font-semibold shadow-sm' : 'text-ink-700 hover:text-ink-900 hover:bg-subtle' }}">
+                <!-- Navigation Tabs with Soft Pill Indicators -->
+                <nav class="hidden md:flex items-center gap-1 text-xs font-semibold">
+                    <a href="{{ route('agent.dashboard') }}" class="px-4 py-2.5 rounded-xl transition-all {{ request()->routeIs('agent.dashboard') ? 'bg-brand-50 text-brand-800 font-bold border border-brand-200/60 shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
                         لوحة المؤشرات
                     </a>
-                    <a href="{{ route('agent.deposit.form') }}" class="px-3.5 py-2 rounded-lg transition {{ request()->routeIs('agent.deposit.*') ? 'bg-fin-teal text-white font-semibold shadow-sm' : 'text-ink-700 hover:text-fin-teal hover:bg-subtle' }}">
+                    <a href="{{ route('agent.deposit.form') }}" class="px-4 py-2.5 rounded-xl transition-all {{ request()->routeIs('agent.deposit.*') ? 'bg-brand-50 text-brand-800 font-bold border border-brand-200/60 shadow-xs' : 'text-slate-600 hover:text-brand-700 hover:bg-slate-50' }}">
                         إيداع نقدي (Cash-In)
                     </a>
-                    <a href="{{ route('agent.withdraw.form') }}" class="px-3.5 py-2 rounded-lg transition {{ request()->routeIs('agent.withdraw.*') ? 'bg-fin-teal text-white font-semibold shadow-sm' : 'text-ink-700 hover:text-fin-amber hover:bg-subtle' }}">
+                    <a href="{{ route('agent.withdraw.form') }}" class="px-4 py-2.5 rounded-xl transition-all {{ request()->routeIs('agent.withdraw.*') ? 'bg-amber-50 text-amber-900 font-bold border border-amber-200/60 shadow-xs' : 'text-slate-600 hover:text-amber-700 hover:bg-slate-50' }}">
                         سحب نقدي (Cash-Out OTP)
                     </a>
-                    <a href="{{ route('agent.transactions') }}" class="px-3.5 py-2 rounded-lg transition {{ request()->routeIs('agent.transactions') ? 'bg-fin-teal text-white font-semibold shadow-sm' : 'text-ink-700 hover:text-ink-900 hover:bg-subtle' }}">
+                    <a href="{{ route('agent.transactions') }}" class="px-4 py-2.5 rounded-xl transition-all {{ request()->routeIs('agent.transactions') ? 'bg-brand-50 text-brand-800 font-bold border border-brand-200/60 shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
                         سجل العمليات
                     </a>
                 </nav>
 
-                <!-- Liquidity Badge & Session -->
+                <!-- Agent Liquidity Card & Logout -->
                 <div class="flex items-center gap-3">
                     @if(isset($agent))
-                    <div class="hidden sm:flex items-center gap-2 bg-subtle/80 border border-line px-3 py-1.5 rounded-lg text-xs">
-                        <span class="text-[11px] text-ink-500 font-medium">الرصيد المتاح:</span>
-                        <span class="font-bold text-ink-900 num-font text-sm">{{ number_format($agent->balance, 2) }}</span>
-                        <span class="text-[10px] text-ink-500">ر.ي</span>
+                    <div class="flex items-center gap-2.5 bg-slate-50 border border-slate-200/80 px-4 py-2 rounded-xl text-xs shadow-xs">
+                        <span class="text-slate-400 font-medium text-[11px]">الرصيد المتاح:</span>
+                        <span class="font-bold text-slate-900 num-font text-sm">{{ number_format($agent->balance, 2) }}</span>
+                        <span class="text-[10px] text-slate-400 font-bold">ر.ي</span>
                     </div>
                     @endif
 
                     <form action="{{ route('agent.logout') }}" method="POST" class="inline">
                         @csrf
-                        <button type="submit" title="خروج" class="text-xs font-medium text-ink-500 hover:text-fin-ruby p-2 border border-line rounded-lg hover:bg-subtle transition flex items-center gap-1.5">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75"/></svg>
+                        <button type="submit" title="خروج" class="text-xs font-semibold text-slate-500 hover:text-rose-600 p-2.5 border border-slate-200/80 rounded-xl hover:bg-rose-50 transition flex items-center gap-1.5 shadow-xs">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75"/></svg>
                             <span class="hidden sm:inline">خروج</span>
                         </button>
                     </form>
                 </div>
+
             </div>
         </div>
     </header>
 
     <!-- Main Workspace -->
-    <main class="flex-1 max-w-7xl w-full mx-auto p-6 sm:p-8 space-y-6">
+    <main class="flex-1 max-w-7xl w-full mx-auto p-6 sm:p-8 lg:p-10 space-y-6">
         @if(session('success'))
-            <div class="bg-fin-tealBg border border-fin-tealLine text-fin-teal px-4 py-3 rounded-lg text-xs font-medium flex items-center gap-2.5 shadow-sm">
-                <svg class="w-4 h-4 text-fin-teal flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+            <div class="bg-emerald-50/90 border border-emerald-200 text-emerald-800 px-5 py-3.5 rounded-2xl text-xs font-semibold flex items-center gap-3 shadow-soft">
+                <div class="w-7 h-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                </div>
                 <span>{{ session('success') }}</span>
             </div>
         @endif
 
         @if($errors->any())
-            <div class="bg-fin-rubyBg border border-fin-rubyLine text-fin-ruby px-4 py-3 rounded-lg text-xs space-y-1 shadow-sm">
-                <div class="font-semibold flex items-center gap-2">
-                    <svg class="w-4 h-4 text-fin-ruby flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
-                    <span>تنبيه بالخطأ:</span>
+            <div class="bg-rose-50/90 border border-rose-200 text-rose-800 px-5 py-4 rounded-2xl text-xs space-y-2 shadow-soft">
+                <div class="font-bold flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-xl bg-rose-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+                    </div>
+                    <span>تنبيه بوجود أخطاء:</span>
                 </div>
-                <ul class="list-disc list-inside pr-6 text-ink-700">
+                <ul class="list-disc list-inside pr-9 text-slate-700 space-y-0.5">
                     @foreach($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
@@ -134,8 +142,8 @@
     </main>
 
     <!-- Minimal Functional Footer -->
-    <footer class="border-t border-line bg-surface py-3 text-center text-[11px] text-ink-400">
-        نظام التحويلات والخدمات المصرفية المعتمدة &copy; {{ date('Y') }}
+    <footer class="border-t border-slate-200/80 bg-white py-4 text-center text-xs text-slate-400">
+        محفظتي للأعمال &bull; شبكة الخدمات المالية والمصرفية المعتمدة &copy; {{ date('Y') }}
     </footer>
 
 </body>

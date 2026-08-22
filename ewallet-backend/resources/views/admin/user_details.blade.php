@@ -1,159 +1,180 @@
 @extends('layouts.admin')
 
-@section('title', 'الملف المالي وكشف الحساب')
-@section('page_title', 'الملف الرقابي وكشف الحساب — ' . $user->full_name)
+@section('title', 'الملف المالي للعميل')
+@section('page_title', 'كشف الحساب والملف الشخصي')
 
 @section('content')
 <div class="space-y-6">
 
-    <!-- Top Action Breadcrumb -->
+    <!-- Back Button & Master Header -->
     <div class="flex items-center justify-between">
-        <a href="{{ route('admin.users') }}" class="text-xs font-medium text-ink-muted hover:text-ink-primary transition flex items-center gap-1.5">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+        <a href="{{ route('admin.users') }}" class="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-slate-900 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
             <span>الرجوع لسجل المستخدمين</span>
         </a>
     </div>
 
-    <!-- User Header Master Record -->
-    <div class="bg-surface-card rounded-lg border border-surface-border p-5 sm:p-6">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-5">
-            <div class="flex items-start gap-4">
-                <div class="w-11 h-11 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-base flex-shrink-0">
-                    {{ mb_substr($user->full_name, 0, 1) }}
+    <!-- User Master Card & KPI Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Profile Card -->
+        <div class="lg:col-span-2 bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/80 shadow-soft space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-slate-900 to-slate-700 text-white flex items-center justify-center font-bold text-xl shadow-md">
+                        {{ mb_substr($user->full_name, 0, 1) }}
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900">{{ $user->full_name }}</h2>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-xs text-slate-500 num-font font-medium" dir="ltr">{{ $user->phone }}</span>
+                            <span class="text-slate-300">&bull;</span>
+                            <span class="text-xs text-slate-400">{{ $user->email ?? 'بدون بريد إلكتروني' }}</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="space-y-1">
-                    <div class="flex items-center gap-2.5">
-                        <h2 class="text-sm font-bold text-ink-primary">{{ $user->full_name }}</h2>
-                        @if($user->status === 'active')
-                            <span class="px-2 py-0.5 rounded text-[11px] font-medium bg-fin-tealBg text-fin-teal border border-fin-tealBorder">
-                                نشط ومفعّل
-                            </span>
-                        @elseif($user->status === 'pending')
-                            <span class="px-2 py-0.5 rounded text-[11px] font-medium bg-fin-amberBg text-fin-amber border border-fin-amberBorder">
-                                قيد المراجعة
-                            </span>
-                        @else
-                            <span class="px-2 py-0.5 rounded text-[11px] font-medium bg-fin-crimsonBg text-fin-crimson border border-fin-crimsonBorder">
-                                معلّق
-                            </span>
-                        @endif
-                    </div>
-                    <div class="flex flex-wrap gap-4 text-xs text-ink-muted">
-                        <div>الهاتف: <strong class="text-ink-primary font-mono" dir="ltr">{{ $user->phone }}</strong></div>
-                        <div>البريد: <strong class="text-ink-primary">{{ $user->email ?? '—' }}</strong></div>
-                        <div>تاريخ التسجيل: <strong class="text-ink-primary num-font">{{ $user->created_at->format('Y-m-d') }}</strong></div>
-                        <div>المعرف: <strong class="text-ink-muted font-mono text-[10px]">{{ $user->id }}</strong></div>
-                    </div>
+
+                <div>
+                    @if($user->status === 'active')
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                            <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+                            حساب مفعّل
+                        </span>
+                    @elseif($user->status === 'pending')
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200/60">
+                            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                            قيد المراجعة
+                        </span>
+                    @elseif($user->status === 'suspended')
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200/60">
+                            <span class="w-2 h-2 rounded-full bg-rose-600"></span>
+                            حساب معلّق
+                        </span>
+                    @else
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            مرفوض
+                        </span>
+                    @endif
                 </div>
             </div>
 
-            <!-- Current Liquid Balance -->
-            <div class="bg-surface-base border border-surface-border rounded-lg p-3.5 min-w-[180px] text-left">
-                <span class="text-[11px] font-semibold text-ink-muted block">الرصيد المتاح الحالي</span>
-                <div class="text-lg font-bold text-ink-primary num-font mt-0.5">
-                    {{ number_format($user->balance, 2) }} <span class="text-[11px] font-sans font-medium text-ink-muted">ر.ي</span>
+            <!-- Balance & Financial Attributes -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="bg-slate-50 p-4.5 rounded-xl border border-slate-100">
+                    <span class="text-xs font-bold text-slate-400">الرصيد المتاح الحالي</span>
+                    <div class="text-2xl font-extrabold text-slate-900 num-font mt-1 tracking-tight">
+                        {{ number_format($user->balance, 2) }} <span class="text-xs font-bold text-teal-700 font-sans">ر.ي</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-4.5 rounded-xl border border-slate-100">
+                    <span class="text-xs font-bold text-slate-400">المعرف الرقمي للنظام (UUID)</span>
+                    <div class="text-xs font-mono text-slate-700 font-semibold mt-2 truncate" dir="ltr">
+                        {{ $user->id }}
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Quick Administration Actions -->
-        <div class="mt-5 pt-4 border-t border-surface-border flex flex-wrap items-center gap-2">
-            <span class="text-xs font-semibold text-ink-secondary ml-2">الإجراءات الرقابية:</span>
-            @if($user->status === 'pending')
-                <form action="{{ route('admin.users.status', $user->id) }}" method="POST" class="inline">
-                    @csrf
-                    <input type="hidden" name="status" value="active">
-                    <button type="submit" class="bg-slate-900 hover:bg-black text-white text-xs font-medium px-3 py-1 rounded transition">
-                        اعتماد وتفعيل الحساب
-                    </button>
-                </form>
-            @elseif($user->status === 'active')
-                <form action="{{ route('admin.users.status', $user->id) }}" method="POST" class="inline">
-                    @csrf
-                    <input type="hidden" name="status" value="suspended">
-                    <button type="submit" onclick="return confirm('تأكيد تعليق حساب هذا العميل؟')" class="text-fin-crimson hover:bg-fin-crimsonBg border border-surface-border hover:border-fin-crimsonBorder text-xs font-medium px-3 py-1 rounded transition">
-                        تعليق الحساب
-                    </button>
-                </form>
-            @elseif($user->status === 'suspended')
-                <form action="{{ route('admin.users.status', $user->id) }}" method="POST" class="inline">
-                    @csrf
-                    <input type="hidden" name="status" value="active">
-                    <button type="submit" class="bg-slate-900 hover:bg-black text-white text-xs font-medium px-3 py-1 rounded transition">
-                        إلغاء التعليق
-                    </button>
-                </form>
-            @endif
+        <!-- Quick Status Control Panel -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-soft space-y-4">
+            <h3 class="text-xs font-bold text-slate-900 pb-3 border-b border-slate-100">التحكم في حالة الحساب</h3>
 
-            <a href="{{ route('admin.balance.form') }}" class="text-xs font-medium text-ink-secondary hover:text-ink-primary bg-surface-card hover:bg-surface-subtle border border-surface-border px-3 py-1 rounded transition">
-                تسوية رصيد مباشر &larr;
-            </a>
+            <form action="{{ route('admin.users.status', $user->id) }}" method="POST" class="space-y-3">
+                @csrf
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">تغيير الحالة إلى:</label>
+                    <select name="status" class="w-full px-3 py-2 text-xs font-bold bg-slate-50 border border-slate-200/80 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
+                        <option value="active" {{ $user->status === 'active' ? 'selected' : '' }}>مفعّل ومصرح (Active)</option>
+                        <option value="suspended" {{ $user->status === 'suspended' ? 'selected' : '' }}>معلّق مؤقتاً (Suspended)</option>
+                        <option value="rejected" {{ $user->status === 'rejected' ? 'selected' : '' }}>مرفوض (Rejected)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">سبب الإجراء (ملاحظة رقابية):</label>
+                    <input type="text" name="reason" placeholder="مثال: تم تدقيق الهوية الوطنية بنجاح" 
+                           class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
+                </div>
+
+                <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition shadow-xs">
+                    تحديث الحالة وإرسال إشعار للعميل
+                </button>
+            </form>
         </div>
+
     </div>
 
-    <!-- Personal Statement Audit Table -->
-    <div class="bg-surface-card rounded-lg border border-surface-border overflow-hidden">
-        <div class="px-5 py-4 border-b border-surface-border flex items-center justify-between">
-            <div>
-                <h3 class="text-xs font-bold text-ink-primary">كشف الحساب وسجل العمليات المالية الخاصة</h3>
-                <p class="text-[11px] text-ink-muted mt-0.5">تفاصيل الإيداعات، السحوبات، والتحويلات مع بيان أطراف العملية</p>
-            </div>
-            <span class="text-xs font-mono text-ink-muted font-semibold">{{ $transactions->total() }} حركة</span>
+    <!-- Personal Statement / Transaction History -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-soft overflow-hidden">
+        <div class="px-6 py-4.5 border-b border-slate-100 flex items-center justify-between">
+            <h3 class="text-xs font-bold text-slate-900">كشف الحساب المالي وسجل حركات العميل</h3>
+            <span class="num-font text-xs font-semibold text-slate-400">{{ $transactions->total() }} حركة مسجلة</span>
         </div>
 
         <div class="overflow-x-auto">
             <table class="w-full text-right text-xs">
-                <thead class="bg-surface-subtle text-ink-secondary font-semibold border-b border-surface-border">
+                <thead class="bg-slate-50/80 text-slate-500 font-bold border-b border-slate-100">
                     <tr>
-                        <th class="py-3 px-4">نوع الحركة</th>
-                        <th class="py-3 px-4">المبلغ والعملة</th>
-                        <th class="py-3 px-4">الطرف الآخر (من / إلى)</th>
-                        <th class="py-3 px-4">البيان والوصف</th>
-                        <th class="py-3 px-4">الحالة</th>
-                        <th class="py-3 px-4">التاريخ والتوقيت</th>
+                        <th class="py-4 px-6">نوع الحركة</th>
+                        <th class="py-4 px-6">المبلغ والعملة</th>
+                        <th class="py-4 px-6">الطرف المقابل</th>
+                        <th class="py-4 px-6">البيان والسبب</th>
+                        <th class="py-4 px-6">التوقيت</th>
+                        <th class="py-4 px-6 text-center">عرض السند</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-surface-border">
+                <tbody class="divide-y divide-slate-100">
                     @forelse($transactions as $tx)
-                    <tr class="hover:bg-surface-base/80 transition">
-                        <td class="py-3 px-4">
+                    <tr class="hover:bg-slate-50/60 transition-colors">
+                        <td class="py-4 px-6">
                             @if($tx->type === 'deposit')
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-fin-tealBg text-fin-teal border border-fin-tealBorder">
-                                    إيداع
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                                    إيداع وارد
                                 </span>
                             @elseif($tx->type === 'withdraw')
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-fin-amberBg text-fin-amber border border-fin-amberBorder">
-                                    سحب نقدي
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200/60">
+                                    سحب صادر
                                 </span>
                             @else
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-surface-subtle text-ink-primary border border-surface-border">
-                                    تحويل
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200/60">
+                                    تحويل رصيد
                                 </span>
                             @endif
                         </td>
-                        <td class="py-3 px-4 font-bold text-ink-primary num-font text-sm">
-                            {{ number_format($tx->amount, 2) }} <span class="text-xs font-semibold text-emerald-700 font-sans">{{ $tx->currency ?? 'SAR' }}</span>
+                        <td class="py-4 px-6 font-bold text-slate-900 num-font text-sm">
+                            {{ number_format($tx->amount, 2) }} <span class="text-xs font-bold text-teal-700 font-sans">{{ $tx->currency ?? 'SAR' }}</span>
                         </td>
-                        <td class="py-3 px-4">
+                        <td class="py-4 px-6">
                             @if($tx->agent)
-                                <div class="text-[11px] text-fin-teal font-medium">الوكيل: {{ $tx->agent->full_name }}</div>
+                                <div class="font-bold text-slate-800">{{ $tx->agent->full_name }}</div>
+                                <div class="text-[10px] text-slate-400 num-font" dir="ltr">وكيل: {{ $tx->agent->phone }}</div>
                             @elseif($tx->admin)
-                                <div class="text-[11px] text-ink-muted font-medium">إشراف إداري: {{ $tx->admin->username }}</div>
+                                <div class="font-semibold text-purple-800">إشراف: {{ $tx->admin->username }}</div>
                             @else
-                                <span class="text-ink-muted">—</span>
+                                <span class="text-slate-400">تحويل داخلي</span>
                             @endif
                         </td>
-                        <td class="py-3 px-4 text-ink-secondary max-w-sm">{{ $tx->description }}</td>
-                        <td class="py-3 px-4">
-                            <span class="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                                مكتمل
-                            </span>
+                        <td class="py-4 px-6 text-slate-600 max-w-xs truncate">{{ $tx->description }}</td>
+                        <td class="py-4 px-6 num-font text-slate-400">{{ $tx->created_at->format('Y-m-d H:i') }}</td>
+                        <td class="py-4 px-6 text-center">
+                            <button onclick='showTxDetails({
+                                id: "{{ $tx->id }}",
+                                type_label: "{{ $tx->type === "deposit" ? "إيداع نقدي" : ($tx->type === "withdraw" ? "سحب نقدي" : "تحويل رصيد") }}",
+                                amount: "{{ number_format($tx->amount, 2) }}",
+                                currency: "{{ $tx->currency ?? 'SAR' }}",
+                                user_name: "{{ $user->full_name }}",
+                                counterparty: "{{ $tx->agent ? $tx->agent->full_name : ($tx->admin ? $tx->admin->username : 'داخلي') }}",
+                                description: "{{ addslashes($tx->description) }}",
+                                created_at: "{{ $tx->created_at->format('Y-m-d H:i:s') }}"
+                            })' class="text-slate-400 hover:text-slate-800 p-1.5 rounded-lg hover:bg-slate-100 transition" title="عرض السند">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+                            </button>
                         </td>
-                        <td class="py-3 px-4 num-font text-ink-muted">{{ $tx->created_at->format('Y-m-d H:i') }}</td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="py-8 text-center text-ink-muted">لا توجد حركات مالية مسجلة لهذا الحساب.</td>
+                        <td colspan="6" class="py-12 text-center text-slate-400">لا توجد عمليات مسجلة في كشف حساب هذا العميل حتى الآن.</td>
                     </tr>
                     @endforelse
                 </tbody>
@@ -161,7 +182,7 @@
         </div>
 
         @if($transactions->hasPages())
-        <div class="p-3.5 border-t border-surface-border">
+        <div class="p-4 border-t border-slate-100 bg-slate-50/50">
             {{ $transactions->links() }}
         </div>
         @endif

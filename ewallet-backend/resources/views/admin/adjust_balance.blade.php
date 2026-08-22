@@ -1,95 +1,86 @@
 @extends('layouts.admin')
 
-@section('title', 'التسويات والتغذية المباشرة')
-@section('page_title', 'التسويات المالية والتغذية والخصم الإداري')
+@section('title', 'التسويات والتغذية المالية المباشرة')
+@section('page_title', 'عمليات التغذية والخصم الإداري الرقابي')
 
 @section('content')
-<div class="max-w-xl mx-auto space-y-6">
+<div class="max-w-2xl mx-auto space-y-6">
 
-    <div class="bg-surface-card p-6 rounded-lg border border-surface-border space-y-5">
-        <div class="pb-4 border-b border-surface-border">
-            <h3 class="text-xs font-bold text-ink-primary">تنفيذ تسوية مالية مباشرة (Direct Financial Adjustment)</h3>
-            <p class="text-[11px] text-ink-muted mt-0.5">تغذية رصيد أو خصم مباشر من حساب مستخدم أو وكيل مع التوثيق الرقابي</p>
+    <!-- Direct Adjustment Terminal Card -->
+    <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-soft space-y-6">
+        
+        <div class="pb-5 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900">نموذج التسوية المالية المباشرة</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">تغذية رصيد أو خصم مباشر مع التوثيق الرقابي الإلزامي</p>
+                </div>
+            </div>
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200/60">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                إجراء محاسبي خاضع للتدقيق
+            </span>
         </div>
 
-        <form action="{{ route('admin.balance.adjust') }}" method="POST" class="space-y-4">
+        <form action="{{ route('admin.balance.adjust') }}" method="POST" class="space-y-5">
             @csrf
 
-            <!-- Target Entity Selection Tabs -->
-            <div>
-                <label class="block text-xs font-semibold text-ink-primary mb-1.5">الحساب المستهدف</label>
-                <div class="grid grid-cols-2 gap-2">
-                    <label class="flex items-center gap-2.5 p-2.5 border border-surface-border rounded cursor-pointer hover:bg-surface-base transition has-[:checked]:border-slate-900 has-[:checked]:bg-surface-base">
-                        <input type="radio" name="target_type" value="user" checked onchange="toggleTargetLists()" class="text-slate-900 focus:ring-slate-900">
-                        <div>
-                            <span class="text-xs font-semibold text-ink-primary block">محفظة عميل (User)</span>
-                            <span class="text-[10px] text-ink-muted block">حسابات الأفراد المسجلين</span>
-                        </div>
-                    </label>
-                    <label class="flex items-center gap-2.5 p-2.5 border border-surface-border rounded cursor-pointer hover:bg-surface-base transition has-[:checked]:border-slate-900 has-[:checked]:bg-surface-base">
-                        <input type="radio" name="target_type" value="agent" onchange="toggleTargetLists()" class="text-slate-900 focus:ring-slate-900">
-                        <div>
-                            <span class="text-xs font-semibold text-ink-primary block">حساب وكيل (Agent)</span>
-                            <span class="text-[10px] text-ink-muted block">مراكز الصرافة المعتمدة</span>
-                        </div>
-                    </label>
-                </div>
-            </div>
-
-            <!-- Target User Selector -->
-            <div id="userSelectGroup">
-                <label class="block text-xs font-semibold text-ink-primary mb-1">حدد العميل</label>
-                <select name="target_id" id="userInput" class="w-full px-3 py-2 text-xs bg-surface-base border border-surface-border rounded text-ink-primary focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 transition">
-                    <option value="">-- حدد العميل النشط --</option>
-                    @foreach($users as $u)
-                        <option value="{{ $u->id }}">{{ $u->full_name }} ({{ $u->phone }}) — الرصيد: {{ number_format($u->balance, 2) }} ر.ي</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <!-- Target Agent Selector -->
-            <div id="agentSelectGroup" class="hidden">
-                <label class="block text-xs font-semibold text-ink-primary mb-1">حدد الوكيل</label>
-                <select name="target_id_agent" id="agentInput" class="w-full px-3 py-2 text-xs bg-surface-base border border-surface-border rounded text-ink-primary focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 transition" disabled>
-                    <option value="">-- حدد الوكيل المعتمد --</option>
-                    @foreach($agents as $a)
-                        <option value="{{ $a->id }}">{{ $a->full_name }} ({{ $a->phone }}) — الرصيد: {{ number_format($a->balance, 2) }} ر.ي</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <!-- Operation Type -->
-            <div>
-                <label class="block text-xs font-semibold text-ink-primary mb-1.5">نوع الحركة المالية</label>
-                <div class="grid grid-cols-2 gap-2">
-                    <label class="flex items-center gap-2.5 p-2.5 border border-surface-border rounded cursor-pointer hover:bg-surface-base transition has-[:checked]:border-fin-teal has-[:checked]:bg-fin-tealBg">
-                        <input type="radio" name="operation" value="credit" checked class="text-fin-teal focus:ring-fin-teal">
-                        <div>
-                            <span class="text-xs font-semibold text-fin-teal block">إضافة وتغذية رصيد (Credit)</span>
-                            <span class="text-[10px] text-ink-muted block">زيادة الرصيد المتاح للطرف</span>
-                        </div>
-                    </label>
-                    <label class="flex items-center gap-2.5 p-2.5 border border-surface-border rounded cursor-pointer hover:bg-surface-base transition has-[:checked]:border-fin-crimson has-[:checked]:bg-fin-crimsonBg">
-                        <input type="radio" name="operation" value="debit" class="text-fin-crimson focus:ring-fin-crimson">
-                        <div>
-                            <span class="text-xs font-semibold text-fin-crimson block">خصم وتسوية رصيد (Debit)</span>
-                            <span class="text-[10px] text-ink-muted block">خصم من رصيد الطرف</span>
-                        </div>
-                    </label>
-                </div>
-            </div>
-
-            <!-- Amount and Currency Selector -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div class="sm:col-span-2">
-                    <label class="block text-xs font-semibold text-ink-primary mb-1">المبلغ</label>
-                    <input type="number" step="0.01" min="1" name="amount" required placeholder="0.00"
-                           class="w-full px-3 py-2 text-sm font-bold num-font bg-surface-base border border-surface-border rounded text-ink-primary focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 transition">
+            <!-- Target Entity Selector (User / Agent) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">نوع الحساب المستهدف</label>
+                    <select name="target_type" id="target_type" onchange="toggleTargetList()" required
+                            class="w-full px-3.5 py-2.5 text-xs font-bold bg-slate-50 border border-slate-200/80 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
+                        <option value="user">عميل عادي (User)</option>
+                        <option value="agent">وكيل معتمد (Agent)</option>
+                    </select>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-ink-primary mb-1">العملة</label>
-                    <select name="currency" required class="w-full px-2.5 py-2 text-xs bg-surface-base border border-surface-border rounded text-ink-primary font-semibold focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 transition">
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">طبيعة العملية</label>
+                    <select name="operation" required
+                            class="w-full px-3.5 py-2.5 text-xs font-bold bg-slate-50 border border-slate-200/80 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
+                        <option value="credit">إيداع / تغذية رصيد (+) Credit</option>
+                        <option value="debit">خصم إداري من الرصيد (-) Debit</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Dynamic User / Agent Target Dropdown -->
+            <div id="user_selector_wrapper">
+                <label class="block text-xs font-semibold text-slate-700 mb-1.5">اختر العميل المستفيد</label>
+                <select name="target_id" id="user_target_select" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
+                    <option value="">-- اختر من قائمة العملاء النشطين --</option>
+                    @foreach($users as $u)
+                        <option value="{{ $u->id }}">{{ $u->full_name }} ({{ $u->phone }}) — الرصيد: {{ number_format($u->balance, 2) }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div id="agent_selector_wrapper" class="hidden">
+                <label class="block text-xs font-semibold text-slate-700 mb-1.5">اختر الوكيل المستهدف</label>
+                <select id="agent_target_select" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
+                    <option value="">-- اختر من قائمة الوكلاء المعتمدين --</option>
+                    @foreach($agents as $a)
+                        <option value="{{ $a->id }}">{{ $a->full_name }} ({{ $a->phone }}) — العهدة: {{ number_format($a->balance, 2) }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <!-- Amount and Currency Selector -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="sm:col-span-2">
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">المبلغ المطلوب تسويته</label>
+                    <input type="number" step="0.01" min="1" name="amount" value="{{ old('amount') }}" required placeholder="0.00" 
+                           class="w-full px-3.5 py-2 text-base font-extrabold bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 num-font focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">العملة</label>
+                    <select name="currency" required class="w-full px-3 py-2.5 text-xs font-bold bg-slate-50 border border-slate-200/80 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
                         <option value="SAR">SAR - سعودي</option>
                         <option value="YER">YER - يمني</option>
                         <option value="USD">USD - دولار</option>
@@ -98,16 +89,17 @@
                 </div>
             </div>
 
-            <!-- Reason / Regulatory Note -->
+            <!-- Audit Reason Note (Mandatory) -->
             <div>
-                <label class="block text-xs font-semibold text-ink-primary mb-1">السبب والملاحظة الرقابية</label>
-                <textarea name="reason" rows="2" required placeholder="مثال: تسوية إدارية رقم #1042، تغذية مصرفية..."
-                          class="w-full px-3 py-2 text-xs bg-surface-base border border-surface-border rounded text-ink-primary focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 transition"></textarea>
+                <label class="block text-xs font-semibold text-slate-700 mb-1.5">البيان والسبب الرقابي للتسوية (إلزامي للتدقيق)</label>
+                <input type="text" name="reason" value="{{ old('reason') }}" required placeholder="مثال: تسوية سند إيداع بنكي رقم 88402 / تغذية افتتاحية" 
+                       class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
             </div>
 
-            <button type="submit" onclick="return confirm('تأكيد تنفيذ هذه الحركة المالية المباشرة وتسجيلها بالسجل الرقابي؟')"
-                    class="w-full bg-slate-900 hover:bg-black text-white font-medium py-2.5 px-4 rounded text-xs transition">
-                تنفيذ وتأكيد العملية
+            <button type="submit" onclick="return confirm('تأكيد تنفيذ عملية التسوية المالية المباشرة وتسجيلها في دفتر الأستاذ العام؟')"
+                    class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 px-4 rounded-xl text-xs transition shadow-md mt-2 flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                <span>تنفيذ التسوية وتحديث الرصيد فوراً</span>
             </button>
         </form>
     </div>
@@ -115,27 +107,23 @@
 </div>
 
 <script>
-    function toggleTargetLists() {
-        const type = document.querySelector('input[name="target_type"]:checked').value;
-        const userGroup = document.getElementById('userSelectGroup');
-        const agentGroup = document.getElementById('agentSelectGroup');
-        const userInput = document.getElementById('userInput');
-        const agentInput = document.getElementById('agentInput');
+    function toggleTargetList() {
+        const type = document.getElementById('target_type').value;
+        const userWrapper = document.getElementById('user_selector_wrapper');
+        const agentWrapper = document.getElementById('agent_selector_wrapper');
+        const userSelect = document.getElementById('user_target_select');
+        const agentSelect = document.getElementById('agent_target_select');
 
         if (type === 'user') {
-            userGroup.classList.remove('hidden');
-            agentGroup.classList.add('hidden');
-            userInput.disabled = false;
-            userInput.name = 'target_id';
-            agentInput.disabled = true;
-            agentInput.name = 'target_id_agent';
+            userWrapper.classList.remove('hidden');
+            agentWrapper.classList.add('hidden');
+            userSelect.name = 'target_id';
+            agentSelect.name = '';
         } else {
-            userGroup.classList.add('hidden');
-            agentGroup.classList.remove('hidden');
-            userInput.disabled = true;
-            userInput.name = 'target_id_user';
-            agentInput.disabled = false;
-            agentInput.name = 'target_id';
+            userWrapper.classList.add('hidden');
+            agentWrapper.classList.remove('hidden');
+            agentSelect.name = 'target_id';
+            userSelect.name = '';
         }
     }
 </script>
