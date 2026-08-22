@@ -1,0 +1,19 @@
+# Development & IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Laravel Backend Dependencies & Environment
+ewallet-backend/vendor/
+ewallet-backend/node_modules/
+ewallet-backend/.env
+ewallet-backend/.env.backup
+ewallet-backend/.env.production
+ewallet-backend/storage/*.key
+ewallet-backend/storage/logs/
+ewallet-backend/storage/framework/cache/data/*
+ewallet-backend/storage/framework/sessions/*
+ewallet-backend/storage/framework/views/*
+ewallet-backend/public/storage
+ewallet-backend/public/hot
