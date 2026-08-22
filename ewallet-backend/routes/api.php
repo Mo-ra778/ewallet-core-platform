@@ -62,6 +62,9 @@ Route::middleware(['jwt.auth'])->group(function () {
     Route::middleware(['check.status'])->prefix('wallet')->group(function () {
         Route::get('/balance', [WalletController::class, 'getBalance']);
         Route::post('/transfer', [WalletController::class, 'transfer']);
+        Route::get('/exchange-rates', [WalletController::class, 'getExchangeRates']);
+        Route::post('/exchange/preview', [WalletController::class, 'previewExchange']);
+        Route::post('/exchange', [WalletController::class, 'exchange']);
         Route::get('/transactions', [WalletController::class, 'transactions']);
     });
 });

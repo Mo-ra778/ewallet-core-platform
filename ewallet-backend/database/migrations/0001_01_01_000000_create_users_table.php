@@ -18,6 +18,10 @@ return new class extends Migration
             $table->string('email')->nullable();
             $table->string('password_hash');
             $table->decimal('balance', 15, 2)->default(0.00);
+            $table->decimal('balance_yer', 15, 2)->default(0.00);
+            $table->decimal('balance_sar', 15, 2)->default(0.00);
+            $table->decimal('balance_usd', 15, 2)->default(0.00);
+            $table->decimal('balance_eur', 15, 2)->default(0.00);
             $table->enum('status', ['pending', 'active', 'suspended', 'rejected'])->default('pending');
             $table->rememberToken();
             $table->timestamps();

@@ -18,6 +18,10 @@ class User extends Authenticatable
         'email',
         'password_hash',
         'balance',
+        'balance_yer',
+        'balance_sar',
+        'balance_usd',
+        'balance_eur',
         'status',
     ];
 
@@ -30,6 +34,10 @@ class User extends Authenticatable
     {
         return [
             'balance' => 'decimal:2',
+            'balance_yer' => 'decimal:2',
+            'balance_sar' => 'decimal:2',
+            'balance_usd' => 'decimal:2',
+            'balance_eur' => 'decimal:2',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
@@ -48,6 +56,79 @@ class User extends Authenticatable
     public function isPending(): bool
     {
         return $this->status === 'pending';
+    }
+
+    /**
+     * Get balance for a specific currency
+     */
+    public function getCurrencyBalance(string $currency = 'YER'): float
+    {
+        $currency = strtoupper($currency);
+        return match ($currency) {
+            'SAR' => (float) $this->balance_sar,
+            'USD' => (float) $this->balance_usd,
+            'EUR' => (float) $this->balance_eur,
+            default => (float) ($this->balance_yer > 0 ? $this->balance_yer : $this->balance),
+        };
+    }
+
+    /**
+     * Get all multi-currency balances as an associative array
+     */
+    public function getAllBalances(): array
+    {
+        return [
+            'YER' => (float) ($this->balance_yer > 0 ? $this->balance_yer : $this->balance),
+            'SAR' => (float) $this->balance_sar,
+            'USD' => (float) $this->balance_usd,
+            'EUR' => (float) $this->balance_eur,
+        ];
+    }
+
+    /**
+     * Check if user has sufficient funds in specified currency
+     */
+    public function hasSufficientBalance(float $amount, string $currency = 'YER'): bool
+    {
+        return $this->getCurrencyBalance($currency) >= $amount;
+    }
+
+    /**
+     * Decrement balance for a specific currency
+     */
+    public function decrementCurrency(string $currency, float $amount): void
+    {
+        $currency = strtoupper($currency);
+        $column = match ($currency) {
+            'SAR' => 'balance_sar',
+            'USD' => 'balance_usd',
+            'EUR' => 'balance_eur',
+            default => 'balance_yer',
+        };
+
+        $this->decrement($column, $amount);
+        if ($column === 'balance_yer') {
+            $this->decrement('balance', $amount);
+        }
+    }
+
+    /**
+     * Increment balance for a specific currency
+     */
+    public function incrementCurrency(string $currency, float $amount): void
+    {
+        $currency = strtoupper($currency);
+        $column = match ($currency) {
+            'SAR' => 'balance_sar',
+            'USD' => 'balance_usd',
+            'EUR' => 'balance_eur',
+            default => 'balance_yer',
+        };
+
+        $this->increment($column, $amount);
+        if ($column === 'balance_yer') {
+            $this->increment('balance', $amount);
+        }
     }
 
     public function transactions(): HasMany

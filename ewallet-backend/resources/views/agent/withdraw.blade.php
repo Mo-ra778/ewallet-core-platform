@@ -34,27 +34,42 @@
 
             <!-- User Phone -->
             <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1.5">رقم هاتف العميل المسجل</label>
+                <label class="block text-xs font-semibold text-slate-700 mb-1.5">رقم هاتف العميل المسجل <span class="text-rose-500">*</span></label>
                 <input type="text" name="phone" value="{{ old('phone') }}" required placeholder="مثال: 777111222" dir="ltr"
-                       class="w-full px-3.5 py-2.5 text-xs num-font bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition text-right">
+                       class="w-full px-3.5 py-2.5 text-xs num-font bg-slate-50 border rounded-xl text-slate-900 focus:bg-white focus:outline-none transition text-right @error('phone') border-rose-400 ring-2 ring-rose-500/20 bg-rose-50/30 @else border-slate-200/80 focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 @enderror">
+                @error('phone')
+                    <p class="text-[11px] text-rose-600 font-semibold mt-1.5 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 text-rose-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+                        <span>{{ $message }}</span>
+                    </p>
+                @enderror
             </div>
 
             <!-- Amount and Currency Selector -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div class="sm:col-span-2">
-                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">المبلغ المراد سحبه</label>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">المبلغ المراد سحبه <span class="text-rose-500">*</span></label>
                     <input type="number" step="0.01" min="1" name="amount" value="{{ old('amount') }}" required placeholder="0.00"
-                           class="w-full px-3.5 py-2 text-base font-extrabold num-font bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
+                           class="w-full px-3.5 py-2 text-base font-extrabold num-font bg-slate-50 border rounded-xl text-slate-900 focus:bg-white focus:outline-none transition @error('amount') border-rose-400 ring-2 ring-rose-500/20 bg-rose-50/30 @else border-slate-200/80 focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 @enderror">
+                    @error('amount')
+                        <p class="text-[11px] text-rose-600 font-semibold mt-1.5 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-rose-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+                            <span>{{ $message }}</span>
+                        </p>
+                    @enderror
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">العملة</label>
-                    <select name="currency" required class="w-full px-3 py-2.5 text-xs font-bold bg-slate-50 border border-slate-200/80 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">العملة <span class="text-rose-500">*</span></label>
+                    <select name="currency" required class="w-full px-3 py-2.5 text-xs font-bold bg-slate-50 border rounded-xl text-slate-800 focus:bg-white focus:outline-none transition @error('currency') border-rose-400 ring-2 ring-rose-500/20 @else border-slate-200/80 focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 @enderror">
                         <option value="SAR" {{ old('currency') === 'SAR' ? 'selected' : '' }}>SAR - سعودي</option>
                         <option value="YER" {{ old('currency') === 'YER' ? 'selected' : '' }}>YER - يمني</option>
                         <option value="USD" {{ old('currency') === 'USD' ? 'selected' : '' }}>USD - دولار</option>
                         <option value="EUR" {{ old('currency') === 'EUR' ? 'selected' : '' }}>EUR - يورو</option>
                     </select>
+                    @error('currency')
+                        <p class="text-[11px] text-rose-600 font-semibold mt-1.5">{{ $message }}</p>
+                    @enderror
                 </div>
             </div>
 

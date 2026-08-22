@@ -23,7 +23,7 @@
             </span>
         </div>
 
-        <!-- Transaction Details Card -->
+        <!-- Transaction Breakdown Card -->
         <div class="bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-3 text-xs">
             <div class="flex justify-between items-center">
                 <span class="text-slate-400 font-medium">اسم العميل المستفيد:</span>
@@ -35,8 +35,27 @@
             </div>
             <div class="flex justify-between items-center border-t border-slate-200/80 pt-3">
                 <span class="text-slate-700 font-bold">المبلغ المطلوب تسليمه نقداً:</span>
-                <span class="text-base font-extrabold text-teal-700 num-font">{{ number_format($amount, 2) }} {{ $currency ?? 'SAR' }}</span>
+                <span class="text-base font-extrabold text-teal-700 num-font">{{ number_format($amount, 2) }} {{ $currency ?? 'YER' }}</span>
             </div>
+            @if(isset($fee) && $fee > 0)
+            <div class="flex justify-between items-center text-slate-500">
+                <span>رسوم خدمة السحب (المقتطعة من العميل):</span>
+                <span class="num-font font-bold text-slate-700">{{ number_format($fee, 2) }} {{ $currency }}</span>
+            </div>
+            <div class="flex justify-between items-center text-slate-500">
+                <span>إجمالي الخصم من محفظة العميل:</span>
+                <span class="num-font font-bold text-slate-900">{{ number_format($total_debit ?? ($amount + $fee), 2) }} {{ $currency }}</span>
+            </div>
+            @endif
+            @if(isset($agent_commission) && $agent_commission > 0)
+            <div class="flex justify-between items-center pt-2 border-t border-slate-200/60 text-emerald-800 bg-emerald-50/60 p-2.5 rounded-xl">
+                <span class="font-bold flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                    أرباح عمولتك كوكيل من هذه الحركة:
+                </span>
+                <span class="num-font font-extrabold text-sm text-emerald-700">+ {{ number_format($agent_commission, 2) }} {{ $currency }}</span>
+            </div>
+            @endif
         </div>
 
         @if(isset($demo_otp))
@@ -52,9 +71,16 @@
 
             <!-- OTP Input -->
             <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-2 text-center">أدخل رمز التحقق (OTP) المكون من 6 أرقام</label>
+                <label class="block text-xs font-semibold text-slate-700 mb-2 text-center">أدخل رمز التحقق (OTP) المكون من 6 أرقام <span class="text-rose-500">*</span></label>
                 <input type="text" name="otp" maxlength="6" autofocus required placeholder="••••••"
-                       class="w-full text-center tracking-[0.6em] text-2xl font-bold num-font py-3 bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition shadow-xs">
+                       class="w-full text-center tracking-[0.6em] text-2xl font-bold num-font py-3 bg-slate-50 border rounded-xl text-slate-900 focus:bg-white focus:outline-none transition shadow-xs @error('otp') border-rose-400 ring-2 ring-rose-500/20 bg-rose-50/30 @else border-slate-200/80 focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 @enderror">
+                
+                @error('otp')
+                    <p class="text-[11px] text-rose-600 font-semibold mt-2 text-center flex items-center justify-center gap-1">
+                        <svg class="w-3.5 h-3.5 text-rose-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+                        <span>{{ $message }}</span>
+                    </p>
+                @enderror
                 <p class="text-[11px] text-center text-slate-400 mt-1.5 font-medium">صلاحية الرمز 5 دقائق فقط</p>
             </div>
 

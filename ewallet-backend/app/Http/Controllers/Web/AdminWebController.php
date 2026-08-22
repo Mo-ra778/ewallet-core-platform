@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Hash;
 class AdminWebController extends Controller
 {
     /**
-     * Show Admin Login Form
+     * Show Admin Login Page
      */
     public function showLogin()
     {
@@ -34,23 +34,27 @@ class AdminWebController extends Controller
             'username' => 'required|string',
             'password' => 'required|string',
         ], [
-            'username.required' => 'اسم المستخدم مطلوب.',
-            'password.required' => 'كلمة المرور مطلوبة.',
+            'username.required' => 'يرجى إدخال اسم المستخدم.',
+            'password.required' => 'يرجى إدخال كلمة المرور.',
         ]);
 
         $admin = Admin::where('username', $request->input('username'))->first();
 
         if (!$admin || !Hash::check($request->input('password'), $admin->password_hash)) {
-            return back()->withErrors(['username' => 'اسم المستخدم أو كلمة المرور غير صحيحة.'])->withInput();
+            return back()->withErrors(['username' => 'بيانات الاعتماد غير صحيحة.'])->withInput();
         }
 
-        session(['admin_id' => $admin->id, 'admin_username' => $admin->username, 'admin_role' => $admin->role]);
+        session([
+            'admin_id' => $admin->id,
+            'admin_username' => $admin->username,
+            'admin_role' => $admin->role,
+        ]);
 
-        return redirect()->route('admin.dashboard')->with('success', 'تم تسجيل الدخول إلى لوحة التحكم بنجاح.');
+        return redirect()->route('admin.dashboard')->with('success', 'تم تسجيل الدخول بنجاح كمدير للنظام.');
     }
 
     /**
-     * Admin Logout
+     * Handle Admin Logout
      */
     public function logout()
     {
@@ -59,7 +63,7 @@ class AdminWebController extends Controller
     }
 
     /**
-     * Admin Dashboard Overview
+     * Admin Dashboard Overview with Multi-Currency Liquidity
      */
     public function dashboard()
     {
@@ -70,10 +74,20 @@ class AdminWebController extends Controller
         $activeUsersCount = User::where('status', 'active')->count();
         $totalAgents = Agent::count();
 
-        $totalUserBalances = User::sum('balance');
-        $totalAgentBalances = Agent::sum('balance');
-        $totalSystemCirculation = $totalUserBalances + $totalAgentBalances;
+        // Calculate Multi-Currency Total Liquidity (Users + Agents)
+        $systemLiquidity = [
+            'YER' => (float) (User::sum('balance_yer') + Agent::sum('balance_yer')),
+            'SAR' => (float) (User::sum('balance_sar') + Agent::sum('balance_sar')),
+            'USD' => (float) (User::sum('balance_usd') + Agent::sum('balance_usd')),
+            'EUR' => (float) (User::sum('balance_eur') + Agent::sum('balance_eur')),
+        ];
 
+        // Overall Primary Currency (YER) Total
+        $totalSystemCirculation = $systemLiquidity['YER'];
+        $totalSystemBalance = $totalSystemCirculation;
+        $activeUsers = $activeUsersCount;
+
+        // Transaction Volume Stats
         $totalVolume = Transaction::where('status', 'completed')->sum('amount');
         $todayVolume = Transaction::where('status', 'completed')
             ->whereDate('created_at', today())
@@ -89,9 +103,6 @@ class AdminWebController extends Controller
             ->limit(10)
             ->get();
 
-        $activeUsers = $activeUsersCount;
-        $totalSystemBalance = $totalSystemCirculation;
-
         return view('admin.dashboard', compact(
             'admin',
             'totalUsers',
@@ -99,6 +110,7 @@ class AdminWebController extends Controller
             'pendingUsersCount',
             'activeUsersCount',
             'totalAgents',
+            'systemLiquidity',
             'totalSystemBalance',
             'totalSystemCirculation',
             'totalVolume',
@@ -142,47 +154,42 @@ class AdminWebController extends Controller
     public function updateUserStatus(Request $request, string $id)
     {
         $request->validate([
-            'status' => 'required|in:active,suspended,rejected',
+            'status' => 'required|in:active,pending,suspended,rejected',
             'reason' => 'nullable|string|max:255',
         ]);
 
         $user = User::findOrFail($id);
         $oldStatus = $user->status;
         $newStatus = $request->input('status');
+        $reason = $request->input('reason');
 
         $user->update(['status' => $newStatus]);
 
-        // Send notification to user about status change
-        $statusMessages = [
-            'active' => 'تمت الموافقة على حسابك وتفعيله بنجاح. يمكنك الآن إجراء التحويلات والإيداعات.',
-            'suspended' => 'تم تعليق حسابك مؤقتاً من قبل الإدارة.',
-            'rejected' => 'تم رفض طلب التسجيل الخاص بحسابك.',
+        $statusLabels = [
+            'active' => 'تفعيل الحساب',
+            'suspended' => 'تعليق الحساب',
+            'rejected' => 'رفض الحساب',
+            'pending' => 'إعادة للمراجعة',
         ];
 
         Notification::create([
             'recipient_id' => $user->id,
             'recipient_type' => 'user',
             'title' => 'تحديث حالة الحساب',
-            'message' => $statusMessages[$newStatus] . ($request->input('reason') ? ' السبب: ' . $request->input('reason') : ''),
+            'message' => "تم تغيير حالة حسابك إلى (" . ($statusLabels[$newStatus] ?? $newStatus) . ")." . ($reason ? " السبب: {$reason}" : ''),
             'type' => 'alert',
             'is_read' => false,
         ]);
 
-        return back()->with('success', "تم تحديث حالة المستخدم [{$user->full_name}] إلى " . match($newStatus) {
-            'active' => 'مفعّل (Approved)',
-            'suspended' => 'معلّق (Suspended)',
-            'rejected' => 'مرفوض (Rejected)',
-            default => $newStatus
-        });
+        return back()->with('success', "تم تحديث حالة حساب العميل {$user->full_name} إلى {$newStatus} بنجاح.");
     }
 
     /**
-     * Show User Details & Personal Financial Statement
+     * User Details and Account Statement
      */
-    public function userDetails(string $id)
+    public function showUser(string $id)
     {
         $user = User::findOrFail($id);
-
         $transactions = Transaction::where('user_id', $user->id)
             ->with(['agent', 'admin'])
             ->orderBy('created_at', 'desc')
@@ -201,51 +208,116 @@ class AdminWebController extends Controller
     }
 
     /**
-     * Create New Agent
+     * Show Agent Profile, Vault Balances, and Financial Movements
+     */
+    public function showAgent(string $id)
+    {
+        $agent = Agent::findOrFail($id);
+
+        $totalTransactions = Transaction::where('agent_id', $agent->id)->count();
+
+        // Multi-currency turnover stats
+        $depositsByCurrency = Transaction::where('agent_id', $agent->id)
+            ->where('type', 'deposit')
+            ->where('status', 'completed')
+            ->select('currency', DB::raw('SUM(amount) as total'))
+            ->groupBy('currency')
+            ->pluck('total', 'currency')
+            ->toArray();
+
+        $withdrawalsByCurrency = Transaction::where('agent_id', $agent->id)
+            ->where('type', 'withdraw')
+            ->where('status', 'completed')
+            ->select('currency', DB::raw('SUM(amount) as total'))
+            ->groupBy('currency')
+            ->pluck('total', 'currency')
+            ->toArray();
+
+        $transactions = Transaction::where('agent_id', $agent->id)
+            ->with(['user', 'admin'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
+
+        return view('admin.agent_details', compact(
+            'agent',
+            'transactions',
+            'depositsByCurrency',
+            'withdrawalsByCurrency',
+            'totalTransactions'
+        ));
+    }
+
+    /**
+     * Create New Authorized Agent with Multi-Currency Initial Vault Balances
      */
     public function createAgent(Request $request)
     {
         $request->validate([
-            'full_name' => 'required|string|max:150',
-            'phone' => 'required|string|unique:agents,phone|max:20',
+            'full_name' => 'required|string|max:255',
+            'phone' => 'required|string|unique:agents,phone',
             'password' => 'required|string|min:6',
-            'initial_balance' => 'nullable|numeric|min:0',
+            'initial_balance_yer' => 'nullable|numeric|min:0',
+            'initial_balance_sar' => 'nullable|numeric|min:0',
+            'initial_balance_usd' => 'nullable|numeric|min:0',
+            'initial_balance_eur' => 'nullable|numeric|min:0',
         ], [
-            'full_name.required' => 'اسم الوكيل مطلوب.',
-            'phone.required' => 'رقم هاتف الوكيل مطلوب.',
-            'phone.unique' => 'رقم الهاتف مسجل مسبقاً لوكيل آخر.',
+            'full_name.required' => 'اسم الوكيل / المركز مطلوب.',
+            'phone.required' => 'رقم هاتف الدخول للوكيل مطلوب.',
+            'phone.unique' => 'رقم الهاتف مستخدم مسبقاً لمركز وكيل آخر.',
             'password.required' => 'كلمة المرور مطلوبة.',
+            'password.min' => 'يجب أن لا تقل كلمة المرور عن 6 أحرف.',
         ]);
 
-        $initialBalance = (float) ($request->input('initial_balance') ?? 0);
+        $yer = (float) $request->input('initial_balance_yer', 0);
+        $sar = (float) $request->input('initial_balance_sar', 0);
+        $usd = (float) $request->input('initial_balance_usd', 0);
+        $eur = (float) $request->input('initial_balance_eur', 0);
 
-        DB::transaction(function () use ($request, $initialBalance) {
+        $agent = DB::transaction(function () use ($request, $yer, $sar, $usd, $eur) {
             $agent = Agent::create([
                 'full_name' => $request->input('full_name'),
                 'phone' => $request->input('phone'),
                 'password_hash' => Hash::make($request->input('password')),
-                'balance' => $initialBalance,
+                'balance' => $yer,
+                'balance_yer' => $yer,
+                'balance_sar' => $sar,
+                'balance_usd' => $usd,
+                'balance_eur' => $eur,
                 'status' => 'active',
             ]);
 
-            if ($initialBalance > 0) {
-                Transaction::create([
-                    'agent_id' => $agent->id,
-                    'admin_id' => session('admin_id'),
-                    'type' => 'deposit',
-                    'amount' => $initialBalance,
-                    'currency' => $request->input('currency', 'SAR'),
-                    'status' => 'completed',
-                    'description' => 'تغذية رصيد افتتاحي للوكيل من الإدارة',
-                ]);
+            $adminId = session('admin_id');
+
+            // Record initial seed transactions for non-zero balances
+            $initialCurrencies = [
+                'YER' => $yer,
+                'SAR' => $sar,
+                'USD' => $usd,
+                'EUR' => $eur,
+            ];
+
+            foreach ($initialCurrencies as $curr => $amt) {
+                if ($amt > 0) {
+                    Transaction::create([
+                        'agent_id' => $agent->id,
+                        'admin_id' => $adminId,
+                        'type' => 'deposit',
+                        'amount' => $amt,
+                        'currency' => $curr,
+                        'status' => 'completed',
+                        'description' => "تغذية عهدة افتتاحية ({$curr}) عند تدشين مركز الوكيل",
+                    ]);
+                }
             }
+
+            return $agent;
         });
 
-        return back()->with('success', 'تم إنشاء حساب الوكيل الجديد بنجاح.');
+        return back()->with('success', "تم إنشاء واعتماد مركز الوكيل {$agent->full_name} وتغذية العهدة الافتتاحية بنجاح.");
     }
 
     /**
-     * Update Agent Status (Suspend / Activate)
+     * Update Agent Status
      */
     public function updateAgentStatus(Request $request, string $id)
     {
@@ -254,23 +326,13 @@ class AdminWebController extends Controller
         ]);
 
         $agent = Agent::findOrFail($id);
-        $newStatus = $request->input('status');
-        $agent->update(['status' => $newStatus]);
+        $agent->update(['status' => $request->input('status')]);
 
-        Notification::create([
-            'recipient_id' => $agent->id,
-            'recipient_type' => 'agent',
-            'title' => 'تحديث حالة حساب الوكيل',
-            'message' => $newStatus === 'active' ? 'تم إعادة تفعيل حساب الوكيل الخاص بك.' : 'تم تعليق حساب الوكيل من قبل الإدارة المركزية.',
-            'type' => 'alert',
-            'is_read' => false,
-        ]);
-
-        return back()->with('success', "تم تحديث حالة الوكيل [{$agent->full_name}] إلى " . ($newStatus === 'active' ? 'مفعّل' : 'معلّق'));
+        return back()->with('success', "تم تحديث حالة الوكيل {$agent->full_name} بنجاح.");
     }
 
     /**
-     * Direct Balance Adjustment (Credit / Debit) Form & List
+     * Direct Balance Adjustment (Credit / Debit) Form
      */
     public function adjustBalanceForm()
     {
@@ -280,7 +342,7 @@ class AdminWebController extends Controller
     }
 
     /**
-     * Execute Direct Balance Adjustment
+     * Execute Direct Balance Adjustment in Selected Currency
      */
     public function adjustBalance(Request $request)
     {
@@ -302,23 +364,24 @@ class AdminWebController extends Controller
         $targetId = $request->input('target_id');
         $operation = $request->input('operation');
         $amount = (float) $request->input('amount');
-        $currency = $request->input('currency', 'SAR');
+        $currency = strtoupper($request->input('currency', 'YER'));
         $reason = $request->input('reason');
         $adminId = session('admin_id');
 
         $entity = $targetType === 'user' ? User::findOrFail($targetId) : Agent::findOrFail($targetId);
 
-        if ($operation === 'debit' && (float) $entity->balance < $amount) {
-            return back()->withErrors(['amount' => "الرصيد الحالي ({$entity->balance} {$currency}) غير كافٍ للخصم."])->withInput();
+        if ($operation === 'debit' && !$entity->hasSufficientBalance($amount, $currency)) {
+            $curBal = number_format($entity->getCurrencyBalance($currency), 2);
+            return back()->withErrors(['amount' => "الرصيد الحالي بعملة {$currency} ({$curBal}) غير كافٍ لإجراء الخصم."])->withInput();
         }
 
         DB::transaction(function () use ($entity, $targetType, $operation, $amount, $currency, $reason, $adminId) {
             if ($operation === 'credit') {
-                $entity->increment('balance', $amount);
+                $entity->incrementCurrency($currency, $amount);
                 $txType = 'deposit';
                 $actionText = 'إيداع/تغذية إدارية';
             } else {
-                $entity->decrement('balance', $amount);
+                $entity->decrementCurrency($currency, $amount);
                 $txType = 'withdraw';
                 $actionText = 'خصم إداري';
             }
@@ -331,20 +394,20 @@ class AdminWebController extends Controller
                 'amount' => $amount,
                 'currency' => $currency,
                 'status' => 'completed',
-                'description' => "{$actionText}: {$reason}",
+                'description' => "{$actionText} ({$currency}): {$reason}",
             ]);
 
             Notification::create([
                 'recipient_id' => $entity->id,
                 'recipient_type' => $targetType,
                 'title' => $actionText,
-                'message' => "تم تنفيذ عملية {$actionText} بمبلغ {$amount} {$currency} على حسابك. السبب: {$reason}",
+                'message' => "تم تنفيذ عملية {$actionText} بمبلغ " . number_format($amount, 2) . " {$currency} على حسابك. السبب: {$reason}",
                 'type' => 'transaction',
                 'is_read' => false,
             ]);
         });
 
-        return back()->with('success', "تم تنفيذ العملية بنجاح على حساب {$entity->full_name}.");
+        return back()->with('success', "تم تنفيذ التسوية بنجاح بمبلغ " . number_format($amount, 2) . " {$currency} على حساب {$entity->full_name}.");
     }
 
     /**
@@ -370,15 +433,11 @@ class AdminWebController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('description', 'like', "%{$search}%")
                   ->orWhereHas('user', function ($uq) use ($search) {
-                      $uq->where('phone', 'like', "%{$search}%")
-                         ->orWhere('full_name', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('agent', function ($aq) use ($search) {
-                      $aq->where('phone', 'like', "%{$search}%")
-                         ->orWhere('full_name', 'like', "%{$search}%");
+                      $uq->where('full_name', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
                   });
             });
-         }
+        }
 
         $transactions = $query->orderBy('created_at', 'desc')->paginate(20);
 
@@ -386,52 +445,221 @@ class AdminWebController extends Controller
     }
 
     /**
-     * Send Custom In-App Notification
+     * Notifications Center & Broadcast
      */
-    public function notifications(Request $request)
+    public function notifications()
     {
-        if ($request->isMethod('post')) {
-            $request->validate([
-                'title' => 'required|string|max:150',
-                'message' => 'required|string',
-                'type' => 'nullable|string|in:alert,message,transaction,otp',
-            ]);
+        $users = User::where('status', 'active')->orderBy('full_name')->get();
+        $agents = Agent::where('status', 'active')->orderBy('full_name')->get();
+        $notifications = Notification::with('recipient')
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
 
-            $userId = $request->input('user_id') ?? $request->input('target_id');
-            $recType = $request->input('recipient_type', 'user');
-            $notifType = $request->input('type', 'alert');
-            $title = $request->input('title');
-            $message = $request->input('message');
+        return view('admin.notifications', compact('users', 'agents', 'notifications'));
+    }
 
-            if ($recType === 'all' || !$userId) {
-                $users = User::all();
-                foreach ($users as $u) {
-                    Notification::create([
-                        'recipient_id' => $u->id,
-                        'recipient_type' => 'user',
-                        'title' => $title,
-                        'message' => $message,
-                        'type' => $notifType,
-                    ]);
-                }
-            } else {
-                $user = User::findOrFail($userId);
+    /**
+     * Send Broadcast Notification to Users or Agents
+     */
+    public function sendNotification(Request $request)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'message' => 'required|string',
+            'type' => 'required|in:alert,message,transaction',
+            'recipient_target' => 'nullable|string',
+        ], [
+            'title.required' => 'عنوان الإشعار مطلوب.',
+            'message.required' => 'نص الإشعار مطلوب.',
+        ]);
+
+        $target = $request->input('recipient_target', 'all_users');
+        $title = $request->input('title');
+        $message = $request->input('message');
+        $type = $request->input('type');
+
+        if ($target === 'all_users' || empty($target)) {
+            $users = User::where('status', 'active')->get();
+            foreach ($users as $u) {
                 Notification::create([
-                    'recipient_id' => $user->id,
+                    'recipient_id' => $u->id,
                     'recipient_type' => 'user',
                     'title' => $title,
                     'message' => $message,
-                    'type' => $notifType,
+                    'type' => $type,
+                    'is_read' => false,
                 ]);
             }
-
-            return back()->with('success', 'تم إرسال الإشعار بنجاح.');
+            $msg = 'تم بث الإشعار بنجاح لكافة المستخدمين النشطين (' . $users->count() . ' مستخدم).';
+        } elseif ($target === 'all_agents') {
+            $agents = Agent::where('status', 'active')->get();
+            foreach ($agents as $a) {
+                Notification::create([
+                    'recipient_id' => $a->id,
+                    'recipient_type' => 'agent',
+                    'title' => $title,
+                    'message' => $message,
+                    'type' => $type,
+                    'is_read' => false,
+                ]);
+            }
+            $msg = 'تم بث الإشعار بنجاح لكافة الوكلاء المعتمدين (' . $agents->count() . ' وكيل).';
+        } elseif (str_starts_with($target, 'user:')) {
+            $userId = substr($target, 5);
+            $user = User::findOrFail($userId);
+            Notification::create([
+                'recipient_id' => $user->id,
+                'recipient_type' => 'user',
+                'title' => $title,
+                'message' => $message,
+                'type' => $type,
+                'is_read' => false,
+            ]);
+            $msg = "تم إرسال الإشعار للعميل {$user->full_name} بنجاح.";
+        } elseif (str_starts_with($target, 'agent:')) {
+            $agentId = substr($target, 6);
+            $agent = Agent::findOrFail($agentId);
+            Notification::create([
+                'recipient_id' => $agent->id,
+                'recipient_type' => 'agent',
+                'title' => $title,
+                'message' => $message,
+                'type' => $type,
+                'is_read' => false,
+            ]);
+            $msg = "تم إرسال الإشعار لمركز الوكيل {$agent->full_name} بنجاح.";
+        } else {
+            $msg = 'تم إرسال الإشعار بنجاح.';
         }
 
-        $users = User::orderBy('full_name')->get();
-        $notifications = Notification::orderBy('created_at', 'desc')->paginate(15);
-        $recentNotifications = $notifications;
+        return back()->with('success', $msg);
+    }
 
-        return view('admin.notifications', compact('users', 'notifications', 'recentNotifications'));
+    /**
+     * Wallet Control Center & Settings
+     */
+    public function settings()
+    {
+        $rates = \App\Models\ExchangeRate::orderBy('from_currency')->get();
+        $settings = \App\Models\SystemSetting::all()->keyBy('key');
+
+        return view('admin.settings', compact('rates', 'settings'));
+    }
+
+    /**
+     * Update Batch of Exchange Rates
+     */
+    public function updateExchangeRates(Request $request)
+    {
+        $request->validate([
+            'rates' => 'required|array',
+            'rates.*.id' => 'required|string',
+            'rates.*.rate' => 'required|numeric|min:0.000001',
+            'rates.*.buy_rate' => 'nullable|numeric|min:0',
+            'rates.*.sell_rate' => 'nullable|numeric|min:0',
+            'rates.*.custom_fee_percent' => 'nullable|numeric|min:0|max:100',
+            'rates.*.min_exchange_amount' => 'nullable|numeric|min:0',
+            'rates.*.max_exchange_amount' => 'nullable|numeric|min:0',
+            'rates.*.is_active' => 'nullable|boolean',
+        ]);
+
+        foreach ($request->input('rates') as $rData) {
+            $rate = \App\Models\ExchangeRate::find($rData['id']);
+            if ($rate) {
+                $rate->update([
+                    'rate' => $rData['rate'],
+                    'buy_rate' => $rData['buy_rate'] ?? $rData['rate'],
+                    'sell_rate' => $rData['sell_rate'] ?? $rData['rate'],
+                    'custom_fee_percent' => isset($rData['custom_fee_percent']) && $rData['custom_fee_percent'] !== '' ? (float) $rData['custom_fee_percent'] : null,
+                    'min_exchange_amount' => isset($rData['min_exchange_amount']) && $rData['min_exchange_amount'] !== '' ? (float) $rData['min_exchange_amount'] : null,
+                    'max_exchange_amount' => isset($rData['max_exchange_amount']) && $rData['max_exchange_amount'] !== '' ? (float) $rData['max_exchange_amount'] : null,
+                    'is_active' => isset($rData['is_active']) ? (bool) $rData['is_active'] : false,
+                ]);
+            }
+        }
+
+        return back()->with('success', 'تم تحديث مصفوفة أسعار الصرف والعمولات المخصصة بنجاح.');
+    }
+
+    /**
+     * Create New Custom Currency Exchange Pair Dynamically
+     */
+    public function createExchangeRate(Request $request)
+    {
+        $request->validate([
+            'from_currency' => 'required|string|max:10',
+            'to_currency' => 'required|string|max:10|different:from_currency',
+            'rate' => 'required|numeric|min:0.000001',
+            'buy_rate' => 'nullable|numeric|min:0',
+            'sell_rate' => 'nullable|numeric|min:0',
+            'custom_fee_percent' => 'nullable|numeric|min:0|max:100',
+            'min_exchange_amount' => 'nullable|numeric|min:0',
+            'max_exchange_amount' => 'nullable|numeric|min:0',
+            'notes' => 'nullable|string|max:255',
+        ], [
+            'from_currency.required' => 'العملة المصدر مطلوبة (مثال: USD, SAR, AED).',
+            'to_currency.required' => 'العملة المستهدفة مطلوبة.',
+            'to_currency.different' => 'العملة المصدر والمستهدفة يجب أن تكونا مختلفتين.',
+            'rate.required' => 'سعر الصرف مطلوب.',
+            'rate.min' => 'سعر الصرف يجب أن يكون أكبر من 0.',
+        ]);
+
+        $from = strtoupper(trim($request->input('from_currency')));
+        $to = strtoupper(trim($request->input('to_currency')));
+
+        \App\Models\ExchangeRate::updateOrCreate(
+            ['from_currency' => $from, 'to_currency' => $to],
+            [
+                'rate' => (float) $request->input('rate'),
+                'buy_rate' => (float) ($request->input('buy_rate') ?? $request->input('rate')),
+                'sell_rate' => (float) ($request->input('sell_rate') ?? $request->input('rate')),
+                'custom_fee_percent' => $request->filled('custom_fee_percent') ? (float) $request->input('custom_fee_percent') : null,
+                'min_exchange_amount' => $request->filled('min_exchange_amount') ? (float) $request->input('min_exchange_amount') : null,
+                'max_exchange_amount' => $request->filled('max_exchange_amount') ? (float) $request->input('max_exchange_amount') : null,
+                'notes' => $request->input('notes'),
+                'is_active' => true,
+            ]
+        );
+
+        return back()->with('success', "تم إضافة زوج الصرف ({$from} &rarr; {$to}) مع شروط وعمولة المصارفة بنجاح.");
+    }
+
+    /**
+     * Delete Exchange Rate Pair
+     */
+    public function deleteExchangeRate(string $id)
+    {
+        $rate = \App\Models\ExchangeRate::findOrFail($id);
+        $pairName = "{$rate->from_currency} &rarr; {$rate->to_currency}";
+        $rate->delete();
+
+        return back()->with('success', "تم حذف زوج الصرف ({$pairName}) من النظام.");
+    }
+
+    /**
+     * Update System Fees and Operating Limits
+     */
+    public function updateSettings(Request $request)
+    {
+        $fields = [
+            'transfer_fee_percent',
+            'transfer_fee_fixed',
+            'withdrawal_fee_percent',
+            'agent_commission_percent',
+            'exchange_fee_percent',
+            'min_transfer_amount',
+            'max_transfer_amount',
+            'daily_transfer_limit',
+            'app_name',
+            'maintenance_mode',
+        ];
+
+        foreach ($fields as $field) {
+            if ($request->has($field)) {
+                \App\Models\SystemSetting::set($field, $request->input($field));
+            }
+        }
+
+        return back()->with('success', 'تم حفظ وتطبيق إعدادات المحفظة والرسوم بنجاح.');
     }
 }

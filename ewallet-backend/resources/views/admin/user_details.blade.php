@@ -14,7 +14,7 @@
         </a>
     </div>
 
-    <!-- User Master Card & KPI Grid -->
+    <!-- User Master Card & Multi-Currency Breakdown -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         <!-- Profile Card -->
@@ -58,19 +58,33 @@
                 </div>
             </div>
 
-            <!-- Balance & Financial Attributes -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="bg-slate-50 p-4.5 rounded-xl border border-slate-100">
-                    <span class="text-xs font-bold text-slate-400">الرصيد المتاح الحالي</span>
-                    <div class="text-2xl font-extrabold text-slate-900 num-font mt-1 tracking-tight">
-                        {{ number_format($user->balance, 2) }} <span class="text-xs font-bold text-teal-700 font-sans">ر.ي</span>
+            <!-- Multi-Currency Wallet Balances -->
+            <div class="space-y-2">
+                <span class="text-xs font-bold text-slate-500 block">أرصدة محفظة العميل بالعملات:</span>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                        <span class="text-[10px] font-bold text-slate-400 block">يمني (YER)</span>
+                        <div class="text-base font-bold text-slate-900 num-font mt-0.5">
+                            {{ number_format($user->getCurrencyBalance('YER'), 2) }}
+                        </div>
                     </div>
-                </div>
-
-                <div class="bg-slate-50 p-4.5 rounded-xl border border-slate-100">
-                    <span class="text-xs font-bold text-slate-400">المعرف الرقمي للنظام (UUID)</span>
-                    <div class="text-xs font-mono text-slate-700 font-semibold mt-2 truncate" dir="ltr">
-                        {{ $user->id }}
+                    <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                        <span class="text-[10px] font-bold text-slate-400 block">سعودي (SAR)</span>
+                        <div class="text-base font-bold text-slate-900 num-font mt-0.5">
+                            {{ number_format($user->getCurrencyBalance('SAR'), 2) }}
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                        <span class="text-[10px] font-bold text-slate-400 block">دولار (USD)</span>
+                        <div class="text-base font-bold text-slate-900 num-font mt-0.5">
+                            {{ number_format($user->getCurrencyBalance('USD'), 2) }}
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                        <span class="text-[10px] font-bold text-slate-400 block">يورو (EUR)</span>
+                        <div class="text-base font-bold text-slate-900 num-font mt-0.5">
+                            {{ number_format($user->getCurrencyBalance('EUR'), 2) }}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -143,7 +157,7 @@
                             @endif
                         </td>
                         <td class="py-4 px-6 font-bold text-slate-900 num-font text-sm">
-                            {{ number_format($tx->amount, 2) }} <span class="text-xs font-bold text-teal-700 font-sans">{{ $tx->currency ?? 'SAR' }}</span>
+                            {{ number_format($tx->amount, 2) }} <span class="text-xs font-bold text-teal-700 font-sans">{{ $tx->currency ?? 'YER' }}</span>
                         </td>
                         <td class="py-4 px-6">
                             @if($tx->agent)
@@ -162,7 +176,7 @@
                                 id: "{{ $tx->id }}",
                                 type_label: "{{ $tx->type === "deposit" ? "إيداع نقدي" : ($tx->type === "withdraw" ? "سحب نقدي" : "تحويل رصيد") }}",
                                 amount: "{{ number_format($tx->amount, 2) }}",
-                                currency: "{{ $tx->currency ?? 'SAR' }}",
+                                currency: "{{ $tx->currency ?? 'YER' }}",
                                 user_name: "{{ $user->full_name }}",
                                 counterparty: "{{ $tx->agent ? $tx->agent->full_name : ($tx->admin ? $tx->admin->username : 'داخلي') }}",
                                 description: "{{ addslashes($tx->description) }}",

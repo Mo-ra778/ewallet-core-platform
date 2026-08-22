@@ -12,41 +12,65 @@
         <div class="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/80 shadow-soft space-y-5">
             <div class="pb-4 border-b border-slate-100">
                 <h3 class="text-xs font-bold text-slate-900">بث إشعار فوري جديد</h3>
-                <p class="text-[11px] text-slate-400 mt-0.5">إرسال تنبيهات لحظية تظهر داخل تطبيق المستخدمين</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">إرسال تنبيهات لحظية للعملاء أو الوكلاء المعتمدين</p>
             </div>
 
             <form action="{{ route('admin.notifications.send') }}" method="POST" class="space-y-4">
                 @csrf
                 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">الجهة المستهدفة</label>
-                    <select name="user_id" class="w-full px-3.5 py-2.5 text-xs font-bold bg-slate-50 border border-slate-200/80 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
-                        <option value="">-- بث عام لكافة المستخدمين (Broadcast All) --</option>
-                        @foreach($users as $u)
-                            <option value="{{ $u->id }}">{{ $u->full_name }} ({{ $u->phone }})</option>
-                        @endforeach
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">الجهة أو المستلم المستهدف <span class="text-rose-500">*</span></label>
+                    <select name="recipient_target" class="w-full px-3.5 py-2.5 text-xs font-bold bg-slate-50 border rounded-xl text-slate-800 focus:bg-white focus:outline-none transition @error('recipient_target') border-rose-400 ring-2 ring-rose-500/20 @else border-slate-200/80 focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 @enderror">
+                        <optgroup label="بث عام شامل (Broadcast Groups)">
+                            <option value="all_users">-- بث عام لكافة العملاء النشطين (All Users) --</option>
+                            <option value="all_agents">-- بث عام لكافة الوكلاء المعتمدين (All Agents) --</option>
+                        </optgroup>
+                        
+                        <optgroup label="عميل محدد (Specific User)">
+                            @foreach($users as $u)
+                                <option value="user:{{ $u->id }}">{{ $u->full_name }} ({{ $u->phone }})</option>
+                            @endforeach
+                        </optgroup>
+
+                        <optgroup label="وكيل معتمد محدد (Specific Agent)">
+                            @foreach($agents as $a)
+                                <option value="agent:{{ $a->id }}">[وكيل] {{ $a->full_name }} ({{ $a->phone }})</option>
+                            @endforeach
+                        </optgroup>
                     </select>
                 </div>
 
                 <div>
                     <label class="block text-xs font-semibold text-slate-700 mb-1.5">نوع التنبيه</label>
-                    <select name="type" class="w-full px-3.5 py-2 text-xs font-bold bg-slate-50 border border-slate-200/80 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
+                    <select name="type" class="w-full px-3.5 py-2 text-xs font-bold bg-slate-50 border rounded-xl text-slate-800 focus:bg-white focus:outline-none transition @error('type') border-rose-400 ring-2 ring-rose-500/20 @else border-slate-200/80 focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 @enderror">
                         <option value="alert">تنبيه هام (Alert)</option>
                         <option value="message">رسالة إدارية (Message)</option>
-                        <option value="transaction">إشعار حركة (Transaction)</option>
+                        <option value="transaction">إشعار حركة مالية (Transaction)</option>
                     </select>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">عنوان الإشعار</label>
-                    <input type="text" name="title" value="{{ old('title') }}" required placeholder="مثال: تحديث أمني / إيداع رصيد تشجيعي" 
-                           class="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">عنوان الإشعار <span class="text-rose-500">*</span></label>
+                    <input type="text" name="title" value="{{ old('title') }}" required placeholder="مثال: تحديث عهدة الوكيل / تنبيه صيانة" 
+                           class="w-full px-3.5 py-2 text-xs bg-slate-50 border rounded-xl text-slate-900 focus:bg-white focus:outline-none transition @error('title') border-rose-400 ring-2 ring-rose-500/20 bg-rose-50/30 @else border-slate-200/80 focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 @enderror">
+                    @error('title')
+                        <p class="text-[11px] text-rose-600 font-semibold mt-1.5 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-rose-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+                            <span>{{ $message }}</span>
+                        </p>
+                    @enderror
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">نص ومحتوى الإشعار</label>
-                    <textarea name="message" rows="4" required placeholder="اكتب نص الرسالة التي ستصل للعميل في التطبيق..." 
-                              class="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition"></textarea>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">نص ومحتوى الإشعار <span class="text-rose-500">*</span></label>
+                    <textarea name="message" rows="4" required placeholder="اكتب نص الرسالة التي ستصل للجهة المستهدفة في شاشتها..." 
+                              class="w-full px-3.5 py-2 text-xs bg-slate-50 border rounded-xl text-slate-900 focus:bg-white focus:outline-none transition @error('message') border-rose-400 ring-2 ring-rose-500/20 bg-rose-50/30 @else border-slate-200/80 focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 @enderror">{{ old('message') }}</textarea>
+                    @error('message')
+                        <p class="text-[11px] text-rose-600 font-semibold mt-1.5 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-rose-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+                            <span>{{ $message }}</span>
+                        </p>
+                    @enderror
                 </div>
 
                 <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition shadow-xs mt-2 flex items-center justify-center gap-2">
@@ -65,7 +89,7 @@
                     </div>
                     <div>
                         <h3 class="text-xs font-bold text-slate-900">سجل الإشعارات والتنبيهات المرسلة</h3>
-                        <p class="text-[11px] text-slate-400 mt-0.5">تتبع وصول الإشعارات وحالة القراءة</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">تتبع وصول الإشعارات للعملاء والوكلاء وحالة القراءة</p>
                     </div>
                 </div>
             </div>
@@ -76,7 +100,7 @@
                         <tr>
                             <th class="py-4 px-6">العنوان والتصنيف</th>
                             <th class="py-4 px-6">المحتوى والتفاصيل</th>
-                            <th class="py-4 px-6">المستلم</th>
+                            <th class="py-4 px-6">المستلم والنوع</th>
                             <th class="py-4 px-6">حالة القراءة</th>
                             <th class="py-4 px-6">التوقيت</th>
                         </tr>
@@ -92,8 +116,11 @@
                             </td>
                             <td class="py-4 px-6 text-slate-600 max-w-xs truncate">{{ $notif->message }}</td>
                             <td class="py-4 px-6">
-                                <span class="text-slate-800 font-medium">
-                                    {{ $notif->recipient ? $notif->recipient->full_name : ($notif->recipient_type === 'user' ? 'عميل' : 'وكيل') }}
+                                <div class="font-semibold text-slate-800">
+                                    {{ $notif->recipient ? $notif->recipient->full_name : 'مستلم' }}
+                                </div>
+                                <span class="text-[10px] font-bold {{ $notif->recipient_type === 'agent' ? 'text-purple-700 bg-purple-50 border border-purple-200' : 'text-slate-500 bg-slate-100' }} px-1.5 py-0.2 rounded-full inline-block mt-0.5">
+                                    {{ $notif->recipient_type === 'agent' ? 'مركز وكيل' : 'عميل محفظة' }}
                                 </span>
                             </td>
                             <td class="py-4 px-6">

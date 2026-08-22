@@ -17,7 +17,7 @@
                     </div>
                     <div>
                         <h3 class="text-xs font-bold text-slate-900">سجل وكلاء الخدمة المعتمدين</h3>
-                        <p class="text-[11px] text-slate-400 mt-0.5">مراكز السحب والإيداع النقدي المصرح لها</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">مراكز السحب والإيداع النقدي وأرصدة العهدة بالعملات</p>
                     </div>
                 </div>
                 <span class="num-font text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-200/60">{{ $agents->total() }} وكيل</span>
@@ -29,23 +29,44 @@
                         <tr>
                             <th class="py-4 px-6">بيانات المركز / الوكيل</th>
                             <th class="py-4 px-6">الهاتف</th>
-                            <th class="py-4 px-6">رصيد العهدة</th>
+                            <th class="py-4 px-6">أرصدة العهدة بالعملات</th>
                             <th class="py-4 px-6">الحالة</th>
-                            <th class="py-4 px-6 text-center">التحكم</th>
+                            <th class="py-4 px-6 text-center">الإجراءات</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @forelse($agents as $agent)
                         <tr class="hover:bg-slate-50/60 transition-colors">
                             <td class="py-4 px-6">
-                                <div class="font-bold text-slate-900">{{ $agent->full_name }}</div>
+                                <a href="{{ route('admin.agents.show', $agent->id) }}" class="font-bold text-slate-900 hover:text-purple-700 transition block">
+                                    {{ $agent->full_name }}
+                                </a>
                                 <div class="text-[10px] text-slate-400 font-mono" dir="ltr">UUID: {{ substr($agent->id, 0, 8) }}...</div>
                             </td>
                             <td class="py-4 px-6 font-medium text-slate-800 num-font" dir="ltr">
                                 {{ $agent->phone }}
                             </td>
-                            <td class="py-4 px-6 font-bold text-slate-900 num-font text-sm">
-                                {{ number_format($agent->balance, 2) }} <span class="text-xs font-bold text-teal-700 font-sans">ر.ي</span>
+                            <td class="py-4 px-6">
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <span class="px-2 py-0.5 rounded-lg bg-teal-50 text-teal-800 border border-teal-200/60 font-mono text-[11px] font-bold">
+                                        {{ number_format($agent->getCurrencyBalance('YER'), 0) }} <span class="text-[9px] font-sans">ر.ي</span>
+                                    </span>
+                                    @if($agent->getCurrencyBalance('SAR') > 0)
+                                    <span class="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200/60 font-mono text-[11px] font-bold">
+                                        {{ number_format($agent->getCurrencyBalance('SAR'), 2) }} <span class="text-[9px] font-sans">SAR</span>
+                                    </span>
+                                    @endif
+                                    @if($agent->getCurrencyBalance('USD') > 0)
+                                    <span class="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-200/60 font-mono text-[11px] font-bold">
+                                        {{ number_format($agent->getCurrencyBalance('USD'), 2) }} <span class="text-[9px] font-sans">$</span>
+                                    </span>
+                                    @endif
+                                    @if($agent->getCurrencyBalance('EUR') > 0)
+                                    <span class="px-2 py-0.5 rounded-lg bg-purple-50 text-purple-800 border border-purple-200/60 font-mono text-[11px] font-bold">
+                                        {{ number_format($agent->getCurrencyBalance('EUR'), 2) }} <span class="text-[9px] font-sans">€</span>
+                                    </span>
+                                    @endif
+                                </div>
                             </td>
                             <td class="py-4 px-6">
                                 @if($agent->status === 'active')
@@ -61,22 +82,29 @@
                                 @endif
                             </td>
                             <td class="py-4 px-6 text-center">
-                                <form action="{{ route('admin.agents.status', $agent->id) }}" method="POST" class="inline">
-                                    @csrf
-                                    @if($agent->status === 'active')
-                                        <input type="hidden" name="status" value="suspended">
-                                        <button type="submit" onclick="return confirm('تأكيد تعليق مركز الوكيل؟')" 
-                                                class="text-rose-600 hover:bg-rose-50 font-semibold text-[11px] px-3 py-1.5 rounded-xl transition border border-rose-200/80 shadow-xs">
-                                            تعليق
-                                        </button>
-                                    @else
-                                        <input type="hidden" name="status" value="active">
-                                        <button type="submit" 
-                                                class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] px-3 py-1.5 rounded-xl transition shadow-xs">
-                                            إعادة تفعيل
-                                        </button>
-                                    @endif
-                                </form>
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <a href="{{ route('admin.agents.show', $agent->id) }}" 
+                                       class="text-teal-700 hover:bg-teal-50 font-semibold text-[11px] px-2.5 py-1.5 rounded-xl transition border border-teal-200/80 shadow-xs">
+                                        الملف والحركات
+                                    </a>
+
+                                    <form action="{{ route('admin.agents.status', $agent->id) }}" method="POST" class="inline">
+                                        @csrf
+                                        @if($agent->status === 'active')
+                                            <input type="hidden" name="status" value="suspended">
+                                            <button type="submit" onclick="return confirm('تأكيد تعليق مركز الوكيل؟')" 
+                                                    class="text-rose-600 hover:bg-rose-50 font-semibold text-[11px] px-2.5 py-1.5 rounded-xl transition border border-rose-200/80 shadow-xs">
+                                                تعليق
+                                            </button>
+                                        @else
+                                            <input type="hidden" name="status" value="active">
+                                            <button type="submit" 
+                                                    class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] px-2.5 py-1.5 rounded-xl transition shadow-xs">
+                                                إعادة تفعيل
+                                            </button>
+                                        @endif
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         @empty
@@ -95,41 +123,81 @@
             @endif
         </div>
 
-        <!-- Add New Agent Form (1 Column) -->
+        <!-- Add New Agent Form with Multi-Currency Initial Vault (1 Column) -->
         <div class="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/80 shadow-soft space-y-5">
             <div class="pb-4 border-b border-slate-100">
-                <h3 class="text-xs font-bold text-slate-900">تسجيل مركز وكيل جديد</h3>
-                <p class="text-[11px] text-slate-400 mt-0.5">إصدار ترخيص لنقطة خدمة وإيداع جديدة</p>
+                <h3 class="text-xs font-bold text-slate-900">تسجيل مركز وكيل جديد وتغذية العهدة</h3>
+                <p class="text-[11px] text-slate-400 mt-0.5">إصدار ترخيص لنقطة خدمة وتحديد الأرصدة الافتتاحية بالعملات</p>
             </div>
 
-            <form action="{{ route('admin.agents.create') }}" method="POST" class="space-y-4">
+            <form action="{{ route('admin.agents.create') }}" method="POST" class="space-y-3.5">
                 @csrf
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">اسم الوكيل / المركز الكامل</label>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">اسم الوكيل / المركز الكامل <span class="text-rose-500">*</span></label>
                     <input type="text" name="full_name" value="{{ old('full_name') }}" required placeholder="مثال: صرافة التضامن - فرع التحرير" 
-                           class="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
+                           class="w-full px-3.5 py-2 text-xs bg-slate-50 border rounded-xl text-slate-900 focus:bg-white focus:outline-none transition @error('full_name') border-rose-400 ring-2 ring-rose-500/20 bg-rose-50/30 @else border-slate-200/80 focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 @enderror">
+                    @error('full_name')
+                        <p class="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-rose-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+                            <span>{{ $message }}</span>
+                        </p>
+                    @enderror
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">رقم هاتف الدخول للوكيل</label>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">رقم هاتف الدخول للوكيل <span class="text-rose-500">*</span></label>
                     <input type="text" name="phone" value="{{ old('phone') }}" required placeholder="مثال: 777999888" dir="ltr"
-                           class="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition text-right num-font">
+                           class="w-full px-3.5 py-2 text-xs bg-slate-50 border rounded-xl text-slate-900 focus:bg-white focus:outline-none transition text-right num-font @error('phone') border-rose-400 ring-2 ring-rose-500/20 bg-rose-50/30 @else border-slate-200/80 focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 @enderror">
+                    @error('phone')
+                        <p class="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-rose-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+                            <span>{{ $message }}</span>
+                        </p>
+                    @enderror
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">كلمة المرور الابتدائية</label>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">كلمة المرور الابتدائية <span class="text-rose-500">*</span></label>
                     <input type="password" name="password" required placeholder="••••••••" 
-                           class="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
+                           class="w-full px-3.5 py-2 text-xs bg-slate-50 border rounded-xl text-slate-900 focus:bg-white focus:outline-none transition @error('password') border-rose-400 ring-2 ring-rose-500/20 bg-rose-50/30 @else border-slate-200/80 focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 @enderror">
+                    @error('password')
+                        <p class="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-rose-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+                            <span>{{ $message }}</span>
+                        </p>
+                    @enderror
                 </div>
 
-                <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">الرصيد الافتتاحي للعهدة (اختياري)</label>
-                    <input type="number" step="0.01" min="0" name="initial_balance" value="{{ old('initial_balance', 0) }}" 
-                           class="w-full px-3.5 py-2 text-sm font-bold bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 num-font focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-700/20 focus:border-brand-700 transition">
+                <!-- Multi-Currency Initial Balances -->
+                <div class="border-t border-slate-100 pt-3 space-y-2">
+                    <span class="text-[11px] font-bold text-slate-600 block">تغذية العهدة الافتتاحية بالعملات (اختياري):</span>
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-500 mb-0.5">ريال يمني (YER)</label>
+                            <input type="number" step="0.01" min="0" name="initial_balance_yer" value="{{ old('initial_balance_yer', 0) }}" 
+                                   class="w-full px-2.5 py-1.5 text-xs font-bold bg-slate-50 border rounded-lg text-slate-900 num-font focus:bg-white focus:outline-none transition border-slate-200">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-500 mb-0.5">ريال سعودي (SAR)</label>
+                            <input type="number" step="0.01" min="0" name="initial_balance_sar" value="{{ old('initial_balance_sar', 0) }}" 
+                                   class="w-full px-2.5 py-1.5 text-xs font-bold bg-slate-50 border rounded-lg text-slate-900 num-font focus:bg-white focus:outline-none transition border-slate-200">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-500 mb-0.5">دولار أمريكي (USD)</label>
+                            <input type="number" step="0.01" min="0" name="initial_balance_usd" value="{{ old('initial_balance_usd', 0) }}" 
+                                   class="w-full px-2.5 py-1.5 text-xs font-bold bg-slate-50 border rounded-lg text-slate-900 num-font focus:bg-white focus:outline-none transition border-slate-200">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-500 mb-0.5">يورو أوروبي (EUR)</label>
+                            <input type="number" step="0.01" min="0" name="initial_balance_eur" value="{{ old('initial_balance_eur', 0) }}" 
+                                   class="w-full px-2.5 py-1.5 text-xs font-bold bg-slate-50 border rounded-lg text-slate-900 num-font focus:bg-white focus:outline-none transition border-slate-200">
+                        </div>
+                    </div>
                 </div>
 
                 <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition shadow-xs mt-2">
-                    إنشاء واعتماد حساب الوكيل
+                    إنشاء واعتماد مركز الوكيل
                 </button>
             </form>
         </div>

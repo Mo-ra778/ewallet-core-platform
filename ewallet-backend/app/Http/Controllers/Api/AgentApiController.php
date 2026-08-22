@@ -63,14 +63,14 @@ class AgentApiController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم تسجيل الدخول',
+            'message' => 'تم تسجيل الدخول بنجاح.',
             'data' => [
                 'token' => $token,
                 'agent' => [
                     'id' => $agent->id,
                     'full_name' => $agent->full_name,
                     'phone' => $agent->phone,
-                    'balance' => (float) $agent->balance,
+                    'balances' => $agent->getAllBalances(),
                 ],
             ],
         ]);
@@ -88,14 +88,18 @@ class AgentApiController extends Controller
 
         $userPhone = $request->input('user_phone') ?? $request->input('phone');
         $amount = (float) $request->input('amount');
-        $currency = $request->input('currency', 'SAR');
+        $currency = strtoupper($request->input('currency', 'YER'));
 
         if (!$userPhone || $amount <= 0) {
             return response()->json(['success' => false, 'message' => 'بيانات غير صحيحة.'], 400);
         }
 
-        if ((float) $agent->balance < $amount) {
-            return response()->json(['success' => false, 'message' => 'رصيد الوكيل غير كافٍ.'], 400);
+        if (!$agent->hasSufficientBalance($amount, $currency)) {
+            return response()->json([
+                'success' => false,
+                'message' => "رصيد العهدة المتاح بعملة {$currency} لا يكفي لإتمام هذه العملية.",
+                'data' => ['balances' => $agent->getAllBalances()],
+            ], 400);
         }
 
         $user = User::where('phone', $userPhone)->first();
@@ -104,8 +108,8 @@ class AgentApiController extends Controller
         }
 
         $tx = DB::transaction(function () use ($agent, $user, $amount, $currency) {
-            $agent->decrement('balance', $amount);
-            $user->increment('balance', $amount);
+            $agent->decrementCurrency($currency, $amount);
+            $user->incrementCurrency($currency, $amount);
 
             $transaction = Transaction::create([
                 'user_id' => $user->id,
@@ -114,14 +118,14 @@ class AgentApiController extends Controller
                 'amount' => $amount,
                 'currency' => $currency,
                 'status' => 'completed',
-                'description' => "إيداع نقدي عبر الوكيل: {$agent->full_name}",
+                'description' => "إيداع نقدي ({$currency}) عبر الوكيل: {$agent->full_name}",
             ]);
 
             Notification::create([
                 'recipient_id' => $user->id,
                 'recipient_type' => 'user',
-                'title' => 'إيداع نقدي',
-                'message' => "تم إيداع مبلغ {$amount} {$currency} في حسابك.",
+                'title' => 'إيداع نقدي ناجح',
+                'message' => "تم إيداع مبلغ " . number_format($amount, 2) . " {$currency} في محفظتك عبر الوكيل {$agent->full_name}.",
                 'type' => 'transaction',
             ]);
 
@@ -129,13 +133,17 @@ class AgentApiController extends Controller
         });
 
         $user->refresh();
+        $agent->refresh();
 
         return response()->json([
             'success' => true,
-            'message' => 'تم الإيداع بنجاح',
+            'message' => 'تم الإيداع بنجاح.',
             'data' => [
                 'transaction_id' => $tx->id,
-                'user_new_balance' => (float) $user->balance,
+                'amount' => $amount,
+                'currency' => $currency,
+                'agent_balances' => $agent->getAllBalances(),
+                'user_new_balance' => $user->getCurrencyBalance($currency),
             ],
         ]);
     }
@@ -152,32 +160,43 @@ class AgentApiController extends Controller
 
         $userPhone = $request->input('user_phone') ?? $request->input('phone');
         $amount = (float) $request->input('amount');
-        $currency = $request->input('currency', 'SAR');
+        $currency = strtoupper($request->input('currency', 'YER'));
+
+        if (!$userPhone || $amount <= 0) {
+            return response()->json(['success' => false, 'message' => 'بيانات غير صحيحة.'], 400);
+        }
 
         $user = User::where('phone', $userPhone)->first();
         if (!$user || $user->status !== 'active') {
-            return response()->json(['success' => false, 'message' => 'العميل غير موجود أو حسابه غير نشط.'], 404);
+            return response()->json(['success' => false, 'message' => 'العميل غير موجود أو حسابه غير مفعّل.'], 404);
         }
 
-        if ((float) $user->balance < $amount) {
-            return response()->json(['success' => false, 'message' => 'رصيد المستخدم غير كافٍ'], 400);
+        if (!$user->hasSufficientBalance($amount, $currency)) {
+            return response()->json([
+                'success' => false,
+                'message' => "رصيد العميل بعملة {$currency} غير كافٍ لإتمام عملية السحب.",
+            ], 400);
         }
 
+        // Generate OTP and notify user
         $otp = $this->otpService->generateWithdrawalOtp($user, $agent->id, $amount, $currency);
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إرسال كود التحقق للمستخدم',
+            'message' => 'تم إرسال رمز التحقق OTP للعميل بنجاح.',
             'data' => [
                 'user_id' => $user->id,
+                'user_name' => $user->full_name,
                 'amount' => $amount,
                 'currency' => $currency,
+                'expires_in' => 300,
+                'demo_otp' => $otp, // convenient for integration testing
             ],
         ]);
     }
 
     /**
-     * Agent Cash-Out Verify Step 2 (REST API)
+     * Agent Cash-Out Verification Step 2 (REST API)
      */
     public function verifyWithdraw(Request $request): JsonResponse
     {
@@ -186,29 +205,29 @@ class AgentApiController extends Controller
             return response()->json(['success' => false, 'message' => 'غير مصرح للوكيل فقط.'], 403);
         }
 
-        $userPhone = $request->input('user_phone') ?? $request->input('phone');
-        $otpCode = $request->input('otp_code') ?? $request->input('otp');
+        $userId = $request->input('user_id');
+        $otp = $request->input('otp');
 
-        $user = User::where('phone', $userPhone)->first();
-        if (!$user) {
-            return response()->json(['success' => false, 'message' => 'العميل غير مسجل.'], 404);
+        if (!$userId || !$otp) {
+            return response()->json(['success' => false, 'message' => 'معرف العميل ورمز الـ OTP مطلوبان.'], 400);
         }
 
-        $otpData = $this->otpService->verifyWithdrawalOtp($user->id, $agent->id, $otpCode);
+        $otpData = $this->otpService->verifyWithdrawalOtp($userId, $agent->id, $otp);
         if (!$otpData) {
-            return response()->json(['success' => false, 'message' => 'كود التحقق غير صحيح أو منتهي الصلاحية'], 400);
+            return response()->json(['success' => false, 'message' => 'رمز التحقق غير صحيح أو انتهت صلاحيته.'], 422);
         }
 
         $amount = (float) $otpData['amount'];
-        $currency = $otpData['currency'] ?? 'SAR';
+        $currency = strtoupper($otpData['currency'] ?? 'YER');
 
-        if ((float) $user->balance < $amount) {
-            return response()->json(['success' => false, 'message' => 'رصيد المستخدم لم يعد كافياً.'], 400);
+        $user = User::findOrFail($userId);
+        if (!$user->hasSufficientBalance($amount, $currency)) {
+            return response()->json(['success' => false, 'message' => 'رصيد العميل لم يعد كافياً.'], 400);
         }
 
         $tx = DB::transaction(function () use ($agent, $user, $amount, $currency) {
-            $user->decrement('balance', $amount);
-            $agent->increment('balance', $amount);
+            $user->decrementCurrency($currency, $amount);
+            $agent->incrementCurrency($currency, $amount);
 
             $transaction = Transaction::create([
                 'user_id' => $user->id,
@@ -217,28 +236,30 @@ class AgentApiController extends Controller
                 'amount' => $amount,
                 'currency' => $currency,
                 'status' => 'completed',
-                'description' => "سحب نقدي عبر الوكيل: {$agent->full_name}",
+                'description' => "سحب نقدي ({$currency}) عبر الوكيل: {$agent->full_name}",
             ]);
 
             Notification::create([
                 'recipient_id' => $user->id,
                 'recipient_type' => 'user',
                 'title' => 'سحب نقدي مؤكد',
-                'message' => "تم سحب مبلغ {$amount} {$currency} من حسابك عبر الوكيل.",
+                'message' => "تم تسليم مبلغ " . number_format($amount, 2) . " {$currency} نقداً عبر الوكيل {$agent->full_name}.",
                 'type' => 'transaction',
             ]);
 
             return $transaction;
         });
 
-        $user->refresh();
+        $agent->refresh();
 
         return response()->json([
             'success' => true,
-            'message' => 'تم السحب بنجاح',
+            'message' => 'تم تأكيد السحب النقدي بنجاح.',
             'data' => [
                 'transaction_id' => $tx->id,
-                'user_new_balance' => (float) $user->balance,
+                'amount' => $amount,
+                'currency' => $currency,
+                'agent_balances' => $agent->getAllBalances(),
             ],
         ]);
     }

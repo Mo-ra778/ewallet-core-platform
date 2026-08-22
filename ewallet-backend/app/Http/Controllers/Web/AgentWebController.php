@@ -70,7 +70,7 @@ class AgentWebController extends Controller
     }
 
     /**
-     * Agent Dashboard
+     * Agent Dashboard with Multi-Currency Balances & Turnover
      */
     public function dashboard()
     {
@@ -78,18 +78,22 @@ class AgentWebController extends Controller
 
         $totalTransactions = Transaction::where('agent_id', $agent->id)->count();
 
-        $totalDeposited = (float) Transaction::where('agent_id', $agent->id)
+        // Calculate Multi-Currency Turnover
+        $depositsByCurrency = Transaction::where('agent_id', $agent->id)
             ->where('type', 'deposit')
             ->where('status', 'completed')
-            ->sum('amount');
+            ->select('currency', DB::raw('SUM(amount) as total'))
+            ->groupBy('currency')
+            ->pluck('total', 'currency')
+            ->toArray();
 
-        $totalWithdrawn = (float) Transaction::where('agent_id', $agent->id)
+        $withdrawalsByCurrency = Transaction::where('agent_id', $agent->id)
             ->where('type', 'withdraw')
             ->where('status', 'completed')
-            ->sum('amount');
-
-        $totalDeposits = $totalDeposited;
-        $totalWithdrawals = $totalWithdrawn;
+            ->select('currency', DB::raw('SUM(amount) as total'))
+            ->groupBy('currency')
+            ->pluck('total', 'currency')
+            ->toArray();
 
         $recentTransactions = Transaction::where('agent_id', $agent->id)
             ->with('user')
@@ -100,10 +104,8 @@ class AgentWebController extends Controller
         return view('agent.dashboard', compact(
             'agent',
             'totalTransactions',
-            'totalDeposited',
-            'totalWithdrawn',
-            'totalDeposits',
-            'totalWithdrawals',
+            'depositsByCurrency',
+            'withdrawalsByCurrency',
             'recentTransactions'
         ));
     }
@@ -118,7 +120,7 @@ class AgentWebController extends Controller
     }
 
     /**
-     * Process Direct Cash-In Deposit to User
+     * Process Direct Cash-In Deposit to User in Selected Currency
      */
     public function deposit(Request $request)
     {
@@ -136,10 +138,12 @@ class AgentWebController extends Controller
 
         $agent = Agent::findOrFail(session('agent_id'));
         $amount = (float) $request->input('amount');
-        $currency = $request->input('currency', 'SAR');
+        $currency = strtoupper($request->input('currency', 'YER'));
 
-        if ((float) $agent->balance < $amount) {
-            return back()->withErrors(['amount' => 'رصيدك الحالي كوكيل لا يكفي لإتمام هذه العملية.'])->withInput();
+        // Check agent balance in this specific currency
+        if (!$agent->hasSufficientBalance($amount, $currency)) {
+            $currentBal = number_format($agent->getCurrencyBalance($currency), 2);
+            return back()->withErrors(['amount' => "رصيد العهدة المتاح بعملة {$currency} ({$currentBal}) لا يكفي لإتمام هذه العملية."])->withInput();
         }
 
         $user = User::where('phone', $request->input('phone'))->first();
@@ -154,8 +158,8 @@ class AgentWebController extends Controller
 
         // Execute Deposit with DB::transaction
         DB::transaction(function () use ($agent, $user, $amount, $currency, $request) {
-            $agent->decrement('balance', $amount);
-            $user->increment('balance', $amount);
+            $agent->decrementCurrency($currency, $amount);
+            $user->incrementCurrency($currency, $amount);
 
             Transaction::create([
                 'user_id' => $user->id,
@@ -164,20 +168,20 @@ class AgentWebController extends Controller
                 'amount' => $amount,
                 'currency' => $currency,
                 'status' => 'completed',
-                'description' => "إيداع نقدي عبر الوكيل: {$agent->full_name}" . ($request->input('notes') ? ' - ' . $request->input('notes') : ''),
+                'description' => "إيداع نقدي ({$currency}) عبر الوكيل: {$agent->full_name}" . ($request->input('notes') ? ' - ' . $request->input('notes') : ''),
             ]);
 
             Notification::create([
                 'recipient_id' => $user->id,
                 'recipient_type' => 'user',
                 'title' => 'إيداع نقدي ناجح',
-                'message' => "تم إيداع مبلغ {$amount} {$currency} في حسابك بنجاح عبر الوكيل {$agent->full_name}.",
+                'message' => "تم إيداع مبلغ " . number_format($amount, 2) . " {$currency} في محفظتك بنجاح عبر الوكيل {$agent->full_name}.",
                 'type' => 'transaction',
                 'is_read' => false,
             ]);
         });
 
-        return redirect()->route('agent.dashboard')->with('success', "تم إيداع مبلغ {$amount} {$currency} بنجاح في حساب العميل {$user->full_name}.");
+        return redirect()->route('agent.dashboard')->with('success', "تم إيداع مبلغ " . number_format($amount, 2) . " {$currency} بنجاح في حساب العميل {$user->full_name}.");
     }
 
     /**
@@ -190,7 +194,7 @@ class AgentWebController extends Controller
     }
 
     /**
-     * Request Cash Withdrawal OTP (Step 1 Submission)
+     * Request Cash Withdrawal OTP (Step 1 Submission) in Selected Currency
      */
     public function requestWithdrawalOtp(Request $request)
     {
@@ -206,7 +210,7 @@ class AgentWebController extends Controller
 
         $agent = Agent::findOrFail(session('agent_id'));
         $amount = (float) $request->input('amount');
-        $currency = $request->input('currency', 'SAR');
+        $currency = strtoupper($request->input('currency', 'YER'));
         $user = User::where('phone', $request->input('phone'))->first();
 
         if (!$user) {
@@ -217,8 +221,14 @@ class AgentWebController extends Controller
             return back()->withErrors(['phone' => 'حساب العميل غير نشط ولا يمكنه السحب حالياً.'])->withInput();
         }
 
-        if ((float) $user->balance < $amount) {
-            return back()->withErrors(['amount' => "رصيد العميل ({$user->balance} {$currency}) غير كافٍ لسحب مبلغ {$amount} {$currency}."])->withInput();
+        // Calculate withdrawal fee
+        $feeInfo = \App\Services\FeeService::calculateWithdrawalFee($amount);
+        $totalRequired = $amount + $feeInfo['fee'];
+
+        // Check user balance in specified currency (amount + fee)
+        if (!$user->hasSufficientBalance($totalRequired, $currency)) {
+            $userBal = number_format($user->getCurrencyBalance($currency), 2);
+            return back()->withErrors(['amount' => "رصيد العميل بعملة {$currency} ({$userBal}) غير كافٍ لتغطية مبلغ السحب مع الرسوم (" . number_format($totalRequired, 2) . " {$currency})."])->withInput();
         }
 
         // Generate OTP & Notify User
@@ -228,8 +238,11 @@ class AgentWebController extends Controller
             'agent' => $agent,
             'user' => $user,
             'amount' => $amount,
+            'fee' => $feeInfo['fee'],
+            'agent_commission' => $feeInfo['agent_commission'],
+            'total_debit' => $totalRequired,
             'currency' => $currency,
-            'demo_otp' => $otp, // Shown for testing convenience
+            'demo_otp' => $otp, // Shown for test convenience
         ]);
     }
 
@@ -258,38 +271,62 @@ class AgentWebController extends Controller
         }
 
         $amount = (float) $otpData['amount'];
-        $currency = $otpData['currency'] ?? 'SAR';
+        $currency = strtoupper($otpData['currency'] ?? 'YER');
 
-        if ((float) $user->balance < $amount) {
-            return redirect()->route('agent.withdraw.form')->withErrors(['amount' => 'رصيد العميل لم يعد كافياً لإتمام السحب.']);
+        // Calculate fee and agent commission
+        $feeInfo = \App\Services\FeeService::calculateWithdrawalFee($amount);
+        $fee = $feeInfo['fee'];
+        $agentCommission = $feeInfo['agent_commission'];
+        $totalDebit = $amount + $fee;
+
+        if (!$user->hasSufficientBalance($totalDebit, $currency)) {
+            return redirect()->route('agent.withdraw.form')->withErrors(['amount' => "رصيد العميل بعملة {$currency} لم يعد كافياً لتغطية السحب والرسوم."]);
         }
 
         // Complete Withdrawal inside DB::transaction
-        DB::transaction(function () use ($agent, $user, $amount, $currency) {
-            $user->decrement('balance', $amount);
-            $agent->increment('balance', $amount);
+        DB::transaction(function () use ($agent, $user, $amount, $fee, $agentCommission, $totalDebit, $currency) {
+            // Deduct total (amount + fee) from user
+            $user->decrementCurrency($currency, $totalDebit);
+
+            // Credit agent with cash replenishment + earned commission share!
+            $agent->incrementCurrency($currency, $amount + $agentCommission);
 
             Transaction::create([
                 'user_id' => $user->id,
                 'agent_id' => $agent->id,
                 'type' => 'withdraw',
                 'amount' => $amount,
+                'fee' => $fee,
+                'commission' => $agentCommission,
                 'currency' => $currency,
                 'status' => 'completed',
-                'description' => "سحب نقدي (Cash-Out) عبر الوكيل: {$agent->full_name}",
+                'description' => "سحب نقدي ({$currency}) عبر الوكيل: {$agent->full_name}" . ($fee > 0 ? " (رسوم: {$fee} {$currency} - عمولة الوكيل: {$agentCommission} {$currency})" : ''),
             ]);
 
+            // Notify User
             Notification::create([
                 'recipient_id' => $user->id,
                 'recipient_type' => 'user',
                 'title' => 'سحب نقدي مؤكد',
-                'message' => "تم سحب مبلغ {$amount} {$currency} نقداً من حسابك عبر الوكيل {$agent->full_name}.",
+                'message' => "تم تسليم مبلغ " . number_format($amount, 2) . " {$currency} نقداً من حسابك عبر الوكيل {$agent->full_name}" . ($fee > 0 ? " (رسوم الخدمة: " . number_format($fee, 2) . " {$currency})" : '') . ".",
                 'type' => 'transaction',
                 'is_read' => false,
             ]);
+
+            // Notify Agent of commission earned
+            if ($agentCommission > 0) {
+                Notification::create([
+                    'recipient_id' => $agent->id,
+                    'recipient_type' => 'agent',
+                    'title' => 'أرباح عمولة سحب نقدي',
+                    'message' => "تمت إضافة عمولة أرباح بمبلغ " . number_format($agentCommission, 2) . " {$currency} إلى عهدتك مقابل تنفيذ عملية سحب للعميل {$user->full_name}.",
+                    'type' => 'transaction',
+                    'is_read' => false,
+                ]);
+            }
         });
 
-        return redirect()->route('agent.dashboard')->with('success', "تم تأكيد سحب مبلغ {$amount} {$currency} بنجاح وتسليمه للعميل {$user->full_name}.");
+        return redirect()->route('agent.dashboard')->with('success', "تم تأكيد سحب مبلغ " . number_format($amount, 2) . " {$currency} بنجاح وتسليمه للعميل {$user->full_name}، وتمت إضافة عمولة الربح (" . number_format($agentCommission, 2) . " {$currency}) إلى رصيدك.");
     }
 
     /**
@@ -309,5 +346,57 @@ class AgentWebController extends Controller
         $transactions = $query->orderBy('created_at', 'desc')->paginate(20);
 
         return view('agent.transactions', compact('agent', 'transactions', 'currency'));
+    }
+
+    /**
+     * Agent Notifications Center
+     */
+    public function notifications()
+    {
+        $agent = Agent::findOrFail(session('agent_id'));
+
+        $notifications = Notification::where('recipient_id', $agent->id)
+            ->where('recipient_type', 'agent')
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
+
+        $unreadCount = Notification::where('recipient_id', $agent->id)
+            ->where('recipient_type', 'agent')
+            ->where('is_read', false)
+            ->count();
+
+        return view('agent.notifications', compact('agent', 'notifications', 'unreadCount'));
+    }
+
+    /**
+     * Mark Notification as Read
+     */
+    public function markNotificationRead(string $id)
+    {
+        $agent = Agent::findOrFail(session('agent_id'));
+
+        $notification = Notification::where('id', $id)
+            ->where('recipient_id', $agent->id)
+            ->where('recipient_type', 'agent')
+            ->firstOrFail();
+
+        $notification->update(['is_read' => true]);
+
+        return back()->with('success', 'تم تحديد الإشعار كمقروء.');
+    }
+
+    /**
+     * Mark All Agent Notifications as Read
+     */
+    public function markAllNotificationsRead()
+    {
+        $agent = Agent::findOrFail(session('agent_id'));
+
+        Notification::where('recipient_id', $agent->id)
+            ->where('recipient_type', 'agent')
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return back()->with('success', 'تم تحديد جميع الإشعارات كمقروءة.');
     }
 }

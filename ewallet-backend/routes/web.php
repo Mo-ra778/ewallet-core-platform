@@ -31,6 +31,9 @@ Route::prefix('agent')->group(function () {
         Route::post('/withdraw/otp', [AgentWebController::class, 'requestWithdrawalOtp'])->name('agent.withdraw.otp');
         Route::post('/withdraw/confirm', [AgentWebController::class, 'confirmWithdrawal'])->name('agent.withdraw.confirm');
         Route::get('/transactions', [AgentWebController::class, 'transactions'])->name('agent.transactions');
+        Route::get('/notifications', [AgentWebController::class, 'notifications'])->name('agent.notifications');
+        Route::post('/notifications/{id}/read', [AgentWebController::class, 'markNotificationRead'])->name('agent.notifications.read');
+        Route::post('/notifications/read-all', [AgentWebController::class, 'markAllNotificationsRead'])->name('agent.notifications.readAll');
     });
 });
 
@@ -45,15 +48,21 @@ Route::prefix('admin')->group(function () {
     Route::middleware(['role.check:admin'])->group(function () {
         Route::get('/dashboard', [AdminWebController::class, 'dashboard'])->name('admin.dashboard');
         Route::get('/users', [AdminWebController::class, 'users'])->name('admin.users');
-        Route::get('/users/{id}', [AdminWebController::class, 'userDetails'])->name('admin.users.show');
+        Route::get('/users/{id}', [AdminWebController::class, 'showUser'])->name('admin.users.show');
         Route::post('/users/{id}/status', [AdminWebController::class, 'updateUserStatus'])->name('admin.users.status');
         Route::get('/agents', [AdminWebController::class, 'agents'])->name('admin.agents');
+        Route::get('/agents/{id}', [AdminWebController::class, 'showAgent'])->name('admin.agents.show');
         Route::post('/agents', [AdminWebController::class, 'createAgent'])->name('admin.agents.create');
         Route::post('/agents/{id}/status', [AdminWebController::class, 'updateAgentStatus'])->name('admin.agents.status');
         Route::get('/balance-adjustment', [AdminWebController::class, 'adjustBalanceForm'])->name('admin.balance.form');
         Route::post('/balance-adjustment', [AdminWebController::class, 'adjustBalance'])->name('admin.balance.adjust');
         Route::get('/transactions', [AdminWebController::class, 'transactions'])->name('admin.transactions');
         Route::get('/notifications', [AdminWebController::class, 'notifications'])->name('admin.notifications');
-        Route::post('/notifications', [AdminWebController::class, 'notifications'])->name('admin.notifications.send');
+        Route::post('/notifications', [AdminWebController::class, 'sendNotification'])->name('admin.notifications.send');
+        Route::get('/settings', [AdminWebController::class, 'settings'])->name('admin.settings');
+        Route::post('/settings/exchange-rates', [AdminWebController::class, 'updateExchangeRates'])->name('admin.settings.rates');
+        Route::post('/settings/exchange-rates/create', [AdminWebController::class, 'createExchangeRate'])->name('admin.settings.rates.create');
+        Route::post('/settings/exchange-rates/{id}/delete', [AdminWebController::class, 'deleteExchangeRate'])->name('admin.settings.rates.delete');
+        Route::post('/settings/system', [AdminWebController::class, 'updateSettings'])->name('admin.settings.system');
     });
 });

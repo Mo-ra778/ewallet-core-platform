@@ -1,3 +1,5 @@
+e
+
 ث
 
 # 💳 نظام المحفظة الإلكترونية (E-Wallet Core Platform)

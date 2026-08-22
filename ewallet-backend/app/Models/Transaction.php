@@ -17,6 +17,8 @@ class Transaction extends Model
         'admin_id',
         'type',
         'amount',
+        'fee',
+        'commission',
         'currency',
         'status',
         'description',
@@ -26,6 +28,8 @@ class Transaction extends Model
     {
         return [
             'amount' => 'decimal:2',
+            'fee' => 'decimal:2',
+            'commission' => 'decimal:2',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
