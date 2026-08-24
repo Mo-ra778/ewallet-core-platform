@@ -447,4 +447,275 @@ class WalletController extends Controller
             'data' => $transactions,
         ]);
     }
+
+    /**
+     * Preview Cash Remittance (Calculate fees and total required before sending)
+     */
+    public function previewRemittance(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'amount' => 'required|numeric|min:1',
+            'currency' => 'nullable|string|in:SAR,YER,USD,EUR',
+        ], [
+            'amount.required' => 'يرجى إدخال مبلغ الحوالة.',
+            'amount.min' => 'أقل مبلغ للحوالة هو 1.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+                'data' => $validator->errors(),
+            ], 422);
+        }
+
+        $amount = (float) $request->input('amount');
+        $currency = strtoupper($request->input('currency', 'YER'));
+
+        $feeData = FeeService::calculateRemittanceFee($amount);
+        $totalRequired = $amount + $feeData['fee'];
+
+        return response()->json([
+            'success' => true,
+            'message' => 'معاينة رسوم الحوالة النقدية جاهزة.',
+            'data' => [
+                'amount' => $amount,
+                'currency' => $currency,
+                'fee' => $feeData['fee'],
+                'fee_percent' => $feeData['fee_percent'],
+                'total_debit' => $totalRequired,
+            ],
+        ]);
+    }
+
+    /**
+     * Send Cash Remittance to an Unregistered Person
+     */
+    public function sendRemittance(Request $request): JsonResponse
+    {
+        /** @var User $sender */
+        $sender = $request->user();
+
+        $validator = Validator::make($request->all(), [
+            'recipient_name' => 'required|string|min:6|max:150',
+            'recipient_phone' => 'required|string|min:7|max:30',
+            'amount' => 'required|numeric|min:1',
+            'currency' => 'nullable|string|in:SAR,YER,USD,EUR',
+            'notes' => 'nullable|string|max:255',
+        ], [
+            'recipient_name.required' => 'اسم المستلم الرباعي مطلوب لإصدار الحوالة.',
+            'recipient_name.min' => 'يرجى إدخال اسم المستلم كاملاً (الاسم واللقب).',
+            'recipient_phone.required' => 'رقم هاتف المستلم مطلوب.',
+            'amount.required' => 'مبلغ الحوالة مطلوب.',
+            'amount.min' => 'أقل مبلغ للحوالة هو 1.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+                'data' => $validator->errors(),
+            ], 422);
+        }
+
+        $recipientName = trim($request->input('recipient_name'));
+        $recipientPhone = trim($request->input('recipient_phone'));
+        $amount = (float) $request->input('amount');
+        $currency = strtoupper($request->input('currency', 'YER'));
+        $notes = $request->input('notes') ?? 'حوالة نقدية كاش';
+
+        // Check fee
+        $feeData = FeeService::calculateRemittanceFee($amount);
+        $fee = $feeData['fee'];
+        $agentCommission = $feeData['agent_commission'];
+        $totalDebit = $amount + $fee;
+
+        // Check sender balance
+        if (!$sender->hasSufficientBalance($totalDebit, $currency)) {
+            return response()->json([
+                'success' => false,
+                'message' => "رصيدك الحالي بعملة {$currency} لا يكفي لتغطية مبلغ الحوالة والرسوم الإجمالية ({$totalDebit} {$currency}).",
+                'data' => [
+                    'current_balance' => $sender->getCurrencyBalance($currency),
+                    'remittance_amount' => $amount,
+                    'fee' => $fee,
+                    'total_required' => $totalDebit,
+                    'currency' => $currency,
+                ],
+            ], 422);
+        }
+
+        // Execute inside DB::transaction
+        $remittance = DB::transaction(function () use ($sender, $recipientName, $recipientPhone, $amount, $fee, $agentCommission, $totalDebit, $currency, $notes) {
+            // Deduct from sender balance
+            $sender->decrementCurrency($currency, $totalDebit);
+
+            // Generate Codes
+            $remittanceCode = \App\Models\Remittance::generateUniqueCode();
+            $pinCode = \App\Models\Remittance::generatePinCode();
+
+            // Create Remittance Record
+            $rem = \App\Models\Remittance::create([
+                'remittance_code' => $remittanceCode,
+                'pin_code' => $pinCode,
+                'sender_id' => $sender->id,
+                'sender_type' => 'user',
+                'sender_name' => $sender->full_name,
+                'sender_phone' => $sender->phone,
+                'recipient_name' => $recipientName,
+                'recipient_phone' => $recipientPhone,
+                'amount' => $amount,
+                'fee' => $fee,
+                'agent_commission' => $agentCommission,
+                'currency' => $currency,
+                'status' => 'pending',
+                'notes' => $notes,
+            ]);
+
+            // Record Transaction in Ledger
+            Transaction::create([
+                'user_id' => $sender->id,
+                'type' => 'transfer',
+                'amount' => $amount,
+                'fee' => $fee,
+                'commission' => 0.00,
+                'currency' => $currency,
+                'status' => 'completed',
+                'description' => "إصدار حوالة نقدية إلى {$recipientName} ({$recipientPhone}) - رقم الحوالة: {$remittanceCode}" . ($fee > 0 ? " (رسوم: {$fee} {$currency})" : ''),
+            ]);
+
+            // Create In-App Notification with the Remittance details
+            Notification::create([
+                'recipient_id' => $sender->id,
+                'recipient_type' => 'user',
+                'title' => 'تم إصدار الحوالة النقدية بنجاح',
+                'message' => "تم إصدار حوالة بمبلغ " . number_format($amount, 2) . " {$currency} إلى {$recipientName}. رقم الحوالة: [ {$remittanceCode} ]، الكود السري: [ {$pinCode} ].",
+                'type' => 'transaction',
+                'is_read' => false,
+            ]);
+
+            return $rem;
+        });
+
+        $sender->refresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إصدار الحوالة النقدية بنجاح. يرجى تزويد المستلم برقم الحوالة والكود السري.',
+            'data' => [
+                'remittance_id' => $remittance->id,
+                'remittance_code' => $remittance->remittance_code,
+                'pin_code' => $remittance->pin_code,
+                'amount' => $remittance->amount,
+                'fee' => $remittance->fee,
+                'currency' => $remittance->currency,
+                'recipient_name' => $remittance->recipient_name,
+                'recipient_phone' => $remittance->recipient_phone,
+                'status' => $remittance->status,
+                'new_balance' => $sender->getCurrencyBalance($currency),
+                'created_at' => $remittance->created_at,
+            ],
+        ], 201);
+    }
+
+    /**
+     * Get All Remittances Sent By Current User
+     */
+    public function myRemittances(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $query = \App\Models\Remittance::where('sender_id', $user->id)
+            ->with('payingAgent:id,full_name,phone');
+
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+
+        $remittances = $query->orderBy('created_at', 'desc')
+            ->paginate($request->input('per_page', 15));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم استرجاع الحوالات النقدية بنجاح.',
+            'data' => $remittances,
+        ]);
+    }
+
+    /**
+     * Cancel an Unclaimed/Pending Remittance and Refund Amount to Sender
+     */
+    public function cancelRemittance(string $id, Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $remittance = \App\Models\Remittance::where('id', $id)
+            ->where('sender_id', $user->id)
+            ->first();
+
+        if (!$remittance) {
+            return response()->json([
+                'success' => false,
+                'message' => 'الحوالة غير موجودة.',
+                'data' => null,
+            ], 404);
+        }
+
+        if ($remittance->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => "لا يمكن إلغاء هذه الحوالة لأنها في حالة ({$remittance->status}). الحوالات المعلقة فقط يمكن إلغاؤها.",
+                'data' => null,
+            ], 422);
+        }
+
+        DB::transaction(function () use ($remittance, $user) {
+            // Update remittance status
+            $remittance->update([
+                'status' => 'cancelled',
+            ]);
+
+            // Refund the principal amount back to user's currency vault
+            $user->incrementCurrency($remittance->currency, (float) $remittance->amount);
+
+            // Record transaction for refund
+            Transaction::create([
+                'user_id' => $user->id,
+                'type' => 'transfer',
+                'amount' => $remittance->amount,
+                'fee' => 0.00,
+                'commission' => 0.00,
+                'currency' => $remittance->currency,
+                'status' => 'completed',
+                'description' => "استرجاع مبلغ حوالة ملغاة (رقم: {$remittance->remittance_code}) للمستلم {$remittance->recipient_name}",
+            ]);
+
+            // In-app Notification
+            Notification::create([
+                'recipient_id' => $user->id,
+                'recipient_type' => 'user',
+                'title' => 'تم إلغاء الحوالة واسترجاع المبلغ',
+                'message' => "تم إلغاء الحوالة رقم {$remittance->remittance_code} واسترجاع مبلغ " . number_format($remittance->amount, 2) . " {$remittance->currency} إلى محفظتك بنجاح.",
+                'type' => 'transaction',
+                'is_read' => false,
+            ]);
+        });
+
+        $user->refresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إلغاء الحوالة واسترجاع المبلغ إلى محفظتك بنجاح.',
+            'data' => [
+                'remittance_id' => $remittance->id,
+                'status' => 'cancelled',
+                'refunded_amount' => $remittance->amount,
+                'currency' => $remittance->currency,
+                'current_balance' => $user->getCurrencyBalance($remittance->currency),
+            ],
+        ]);
+    }
 }
+

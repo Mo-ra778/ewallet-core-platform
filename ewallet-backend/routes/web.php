@@ -30,6 +30,8 @@ Route::prefix('agent')->group(function () {
         Route::get('/withdraw', [AgentWebController::class, 'withdrawForm'])->name('agent.withdraw.form');
         Route::post('/withdraw/otp', [AgentWebController::class, 'requestWithdrawalOtp'])->name('agent.withdraw.otp');
         Route::post('/withdraw/confirm', [AgentWebController::class, 'confirmWithdrawal'])->name('agent.withdraw.confirm');
+        Route::get('/remittance-payout', [AgentWebController::class, 'showRemittancePayout'])->name('agent.remittance.form');
+        Route::post('/remittance-payout', [AgentWebController::class, 'processRemittancePayout'])->name('agent.remittance.payout');
         Route::get('/transactions', [AgentWebController::class, 'transactions'])->name('agent.transactions');
         Route::get('/notifications', [AgentWebController::class, 'notifications'])->name('agent.notifications');
         Route::post('/notifications/{id}/read', [AgentWebController::class, 'markNotificationRead'])->name('agent.notifications.read');
@@ -57,6 +59,8 @@ Route::prefix('admin')->group(function () {
         Route::get('/balance-adjustment', [AdminWebController::class, 'adjustBalanceForm'])->name('admin.balance.form');
         Route::post('/balance-adjustment', [AdminWebController::class, 'adjustBalance'])->name('admin.balance.adjust');
         Route::get('/transactions', [AdminWebController::class, 'transactions'])->name('admin.transactions');
+        Route::get('/remittances', [AdminWebController::class, 'remittances'])->name('admin.remittances');
+        Route::post('/remittances/{id}/cancel', [AdminWebController::class, 'cancelRemittance'])->name('admin.remittance.cancel');
         Route::get('/notifications', [AdminWebController::class, 'notifications'])->name('admin.notifications');
         Route::post('/notifications', [AdminWebController::class, 'sendNotification'])->name('admin.notifications.send');
         Route::get('/settings', [AdminWebController::class, 'settings'])->name('admin.settings');
@@ -66,3 +70,4 @@ Route::prefix('admin')->group(function () {
         Route::post('/settings/system', [AdminWebController::class, 'updateSettings'])->name('admin.settings.system');
     });
 });
+

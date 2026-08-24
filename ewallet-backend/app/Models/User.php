@@ -141,4 +141,10 @@ class User extends Authenticatable
         return $this->hasMany(Notification::class, 'recipient_id')
             ->where('recipient_type', 'user');
     }
+
+    public function remittances(): HasMany
+    {
+        return $this->hasMany(Remittance::class, 'sender_id');
+    }
 }
+

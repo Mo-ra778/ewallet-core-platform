@@ -662,4 +662,91 @@ class AdminWebController extends Controller
 
         return back()->with('success', 'تم حفظ وتطبيق إعدادات المحفظة والرسوم بنجاح.');
     }
+
+    /**
+     * Cash Remittances Management & Ledger
+     */
+    public function remittances(Request $request)
+    {
+        $query = \App\Models\Remittance::with(['sender:id,full_name,phone', 'payingAgent:id,full_name,phone']);
+
+        if ($search = $request->query('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('remittance_code', 'like', "%{$search}%")
+                  ->orWhere('recipient_name', 'like', "%{$search}%")
+                  ->orWhere('recipient_phone', 'like', "%{$search}%")
+                  ->orWhere('sender_name', 'like', "%{$search}%")
+                  ->orWhere('sender_phone', 'like', "%{$search}%");
+            });
+        }
+
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+
+        if ($currency = $request->query('currency')) {
+            $query->where('currency', strtoupper($currency));
+        }
+
+        $remittances = $query->orderBy('created_at', 'desc')->paginate(15);
+
+        $stats = [
+            'total_count' => \App\Models\Remittance::count(),
+            'pending_count' => \App\Models\Remittance::where('status', 'pending')->count(),
+            'paid_count' => \App\Models\Remittance::where('status', 'paid')->count(),
+            'cancelled_count' => \App\Models\Remittance::where('status', 'cancelled')->count(),
+            'total_volume_yer' => (float) \App\Models\Remittance::where('currency', 'YER')->where('status', 'paid')->sum('amount'),
+            'total_volume_sar' => (float) \App\Models\Remittance::where('currency', 'SAR')->where('status', 'paid')->sum('amount'),
+            'total_volume_usd' => (float) \App\Models\Remittance::where('currency', 'USD')->where('status', 'paid')->sum('amount'),
+        ];
+
+        return view('admin.remittances', compact('remittances', 'stats'));
+    }
+
+    /**
+     * Cancel an Unclaimed Remittance by Admin and Refund Sender
+     */
+    public function cancelRemittance(string $id)
+    {
+        $remittance = \App\Models\Remittance::findOrFail($id);
+
+        if ($remittance->status !== 'pending') {
+            return back()->withErrors(['error' => "لا يمكن إلغاء الحوالة لأنها في حالة ({$remittance->status})."]);
+        }
+
+        DB::transaction(function () use ($remittance) {
+            $remittance->update(['status' => 'cancelled']);
+
+            if ($remittance->sender_id) {
+                $user = User::find($remittance->sender_id);
+                if ($user) {
+                    $user->incrementCurrency($remittance->currency, (float) $remittance->amount);
+
+                    Transaction::create([
+                        'user_id' => $user->id,
+                        'admin_id' => session('admin_id'),
+                        'type' => 'transfer',
+                        'amount' => $remittance->amount,
+                        'fee' => 0.00,
+                        'commission' => 0.00,
+                        'currency' => $remittance->currency,
+                        'status' => 'completed',
+                        'description' => "إلغاء واسترجاع حوالة نقدية إدارياً (رقم: {$remittance->remittance_code}) للمستلم {$remittance->recipient_name}",
+                    ]);
+
+                    Notification::create([
+                        'recipient_id' => $user->id,
+                        'recipient_type' => 'user',
+                        'title' => 'إلغاء حوالة نقدية واسترجاع المبلغ',
+                        'message' => "تم إلغاء الحوالة رقم {$remittance->remittance_code} من قبل الإدارة واسترجاع مبلغ " . number_format($remittance->amount, 2) . " {$remittance->currency} إلى حسابك.",
+                        'type' => 'transaction',
+                        'is_read' => false,
+                    ]);
+                }
+            }
+        });
+
+        return back()->with('success', "تم إلغاء الحوالة رقم ({$remittance->remittance_code}) بنجاح واسترجاع المبلغ لحساب المرسل.");
+    }
 }
+

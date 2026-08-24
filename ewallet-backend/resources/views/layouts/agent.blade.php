@@ -96,10 +96,14 @@
                     <a href="{{ route('agent.withdraw.form') }}" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition {{ request()->routeIs('agent.withdraw*') ? 'bg-white text-amber-700 shadow-xs' : 'text-slate-600 hover:text-slate-900' }}">
                         سحب كاش
                     </a>
+                    <a href="{{ route('agent.remittance.form') }}" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition {{ request()->routeIs('agent.remittance*') ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900' }}">
+                        صرف حوالة
+                    </a>
                     <a href="{{ route('agent.transactions') }}" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition {{ request()->routeIs('agent.transactions') ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900' }}">
                         السجل
                     </a>
                 </nav>
+
 
                 @php
                     $agentUnreadNotifs = \App\Models\Notification::where('recipient_id', session('agent_id'))->where('recipient_type', 'agent')->where('is_read', false)->count();

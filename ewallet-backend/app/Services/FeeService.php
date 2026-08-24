@@ -52,4 +52,27 @@ class FeeService
 
         return round($amount * ($percent / 100), 2);
     }
+
+    /**
+     * Calculate cash remittance fee and agent payout commission
+     */
+    public static function calculateRemittanceFee(float $amount): array
+    {
+        $percent = SystemSetting::getFloat('remittance_fee_percent', 1.0); // default 1% for cash remittance
+        $fixed = SystemSetting::getFloat('remittance_fee_fixed', 0.0);
+        $agentSharePercent = SystemSetting::getFloat('remittance_agent_commission_percent', 50.0); // 50% of fee goes to paying agent
+
+        $totalFee = round(($amount * ($percent / 100)) + $fixed, 2);
+        $agentCommission = round($totalFee * ($agentSharePercent / 100), 2);
+        $platformNet = round($totalFee - $agentCommission, 2);
+
+        return [
+            'fee' => $totalFee,
+            'agent_commission' => $agentCommission,
+            'platform_net' => $platformNet,
+            'fee_percent' => $percent,
+        ];
+    }
 }
+
+

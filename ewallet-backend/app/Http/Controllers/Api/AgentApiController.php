@@ -263,4 +263,193 @@ class AgentApiController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Search Remittance for Payout Verification
+     */
+    public function searchRemittance(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'remittance_code' => 'required|string',
+            'pin_code' => 'required|string',
+        ], [
+            'remittance_code.required' => 'رقم الحوالة مطلوب.',
+            'pin_code.required' => 'الكود السري مطلوب للتحقق من الحوالة.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+                'data' => $validator->errors(),
+            ], 422);
+        }
+
+        $code = trim($request->input('remittance_code'));
+        $pin = trim($request->input('pin_code'));
+
+        $remittance = \App\Models\Remittance::where('remittance_code', $code)
+            ->where('pin_code', $pin)
+            ->first();
+
+        if (!$remittance) {
+            return response()->json([
+                'success' => false,
+                'message' => 'بيانات الحوالة غير صحيحة أو الكود السري غير مطابق.',
+                'data' => null,
+            ], 404);
+        }
+
+        if ($remittance->status !== 'pending') {
+            $statusArabic = match($remittance->status) {
+                'paid' => 'مصروفة مسبقاً',
+                'cancelled' => 'ملغاة ومسترجعة للمرسل',
+                default => $remittance->status
+            };
+            return response()->json([
+                'success' => false,
+                'message' => "هذه الحوالة غير قابلة للصرف لأنها ({$statusArabic}).",
+                'data' => [
+                    'remittance_code' => $remittance->remittance_code,
+                    'status' => $remittance->status,
+                    'paid_at' => $remittance->paid_at,
+                ],
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم العثور على الحوالة وجاهزة للصرف.',
+            'data' => [
+                'remittance_id' => $remittance->id,
+                'remittance_code' => $remittance->remittance_code,
+                'sender_name' => $remittance->sender_name,
+                'sender_phone' => $remittance->sender_phone,
+                'recipient_name' => $remittance->recipient_name,
+                'recipient_phone' => $remittance->recipient_phone,
+                'amount' => $remittance->amount,
+                'currency' => $remittance->currency,
+                'agent_commission' => $remittance->agent_commission,
+                'status' => $remittance->status,
+                'created_at' => $remittance->created_at,
+            ],
+        ]);
+    }
+
+    /**
+     * Execute Remittance Cash Payout to Recipient
+     */
+    public function payoutRemittance(Request $request): JsonResponse
+    {
+        /** @var Agent $agent */
+        $agent = $request->user();
+        if (!$agent instanceof Agent) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح للوكيل فقط.'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'remittance_code' => 'required|string',
+            'pin_code' => 'required|string',
+            'recipient_id_type' => 'required|string|max:50',
+            'recipient_id_number' => 'required|string|max:50',
+        ], [
+            'remittance_code.required' => 'رقم الحوالة مطلوب.',
+            'pin_code.required' => 'الكود السري مطلوب.',
+            'recipient_id_type.required' => 'نوع وثيقة إثبات الهوية مطلوب.',
+            'recipient_id_number.required' => 'رقم وثيقة إثبات الهوية مطلوب.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+                'data' => $validator->errors(),
+            ], 422);
+        }
+
+        $code = trim($request->input('remittance_code'));
+        $pin = trim($request->input('pin_code'));
+        $idType = trim($request->input('recipient_id_type'));
+        $idNumber = trim($request->input('recipient_id_number'));
+
+        $remittance = \App\Models\Remittance::where('remittance_code', $code)
+            ->where('pin_code', $pin)
+            ->first();
+
+        if (!$remittance) {
+            return response()->json([
+                'success' => false,
+                'message' => 'بيانات الحوالة أو الكود السري غير صحيح.',
+                'data' => null,
+            ], 404);
+        }
+
+        if ($remittance->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'الحوالة ليست بحالة معلقة ولا يمكن صرفها.',
+                'data' => null,
+            ], 422);
+        }
+
+        $tx = DB::transaction(function () use ($agent, $remittance, $idType, $idNumber) {
+            // Update Remittance to Paid
+            $remittance->update([
+                'status' => 'paid',
+                'paid_by_agent_id' => $agent->id,
+                'paid_at' => now(),
+                'recipient_id_type' => $idType,
+                'recipient_id_number' => $idNumber,
+            ]);
+
+            // When agent pays cash, agent gets system credit (amount + commission) in their vault
+            $totalCredit = (float) $remittance->amount + (float) $remittance->agent_commission;
+            $agent->incrementCurrency($remittance->currency, $totalCredit);
+
+            // Record transaction for agent
+            $transaction = Transaction::create([
+                'agent_id' => $agent->id,
+                'user_id' => $remittance->sender_id,
+                'type' => 'withdraw',
+                'amount' => $remittance->amount,
+                'fee' => $remittance->fee,
+                'commission' => $remittance->agent_commission,
+                'currency' => $remittance->currency,
+                'status' => 'completed',
+                'description' => "صرف حوالة نقدية للمستلم {$remittance->recipient_name} (رقم: {$remittance->remittance_code}) - إثبات هوية ({$idType}: {$idNumber}) - عمولة الوكيل: {$remittance->agent_commission} {$remittance->currency}",
+            ]);
+
+            // If sender is a user, notify them that remittance was paid out
+            if ($remittance->sender_id) {
+                Notification::create([
+                    'recipient_id' => $remittance->sender_id,
+                    'recipient_type' => 'user',
+                    'title' => 'تم استلام وصرف الحوالة',
+                    'message' => "قام المستلم {$remittance->recipient_name} باستلام الحوالة رقم {$remittance->remittance_code} بمبلغ " . number_format($remittance->amount, 2) . " {$remittance->currency} نقداً عبر الوكيل {$agent->full_name}.",
+                    'type' => 'transaction',
+                    'is_read' => false,
+                ]);
+            }
+
+            return $transaction;
+        });
+
+        $agent->refresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم صرف الحوالة النقدية بنجاح وتسجيل السند.',
+            'data' => [
+                'transaction_id' => $tx->id,
+                'remittance_code' => $remittance->remittance_code,
+                'recipient_name' => $remittance->recipient_name,
+                'amount_paid' => $remittance->amount,
+                'agent_commission' => $remittance->agent_commission,
+                'currency' => $remittance->currency,
+                'paid_at' => $remittance->paid_at,
+                'agent_balances' => $agent->getAllBalances(),
+            ],
+        ]);
+    }
 }
+

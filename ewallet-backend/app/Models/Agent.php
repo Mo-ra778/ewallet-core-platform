@@ -135,4 +135,10 @@ class Agent extends Authenticatable
         return $this->hasMany(Notification::class, 'recipient_id')
             ->where('recipient_type', 'agent');
     }
+
+    public function paidRemittances(): HasMany
+    {
+        return $this->hasMany(Remittance::class, 'paid_by_agent_id');
+    }
 }
+

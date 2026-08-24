@@ -84,34 +84,48 @@
         </div>
     </div>
 
-    <!-- Quick Action Launchers (Cash-In & Cash-Out) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <a href="{{ route('agent.deposit.form') }}" class="group bg-white p-6 rounded-2xl border border-slate-200/80 shadow-soft hover:border-teal-500 hover:shadow-card transition flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center group-hover:scale-105 transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+    <!-- Quick Action Launchers (Cash-In, Cash-Out & Remittance Payout) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <a href="{{ route('agent.deposit.form') }}" class="group bg-white p-5 rounded-2xl border border-slate-200/80 shadow-soft hover:border-teal-500 hover:shadow-card transition flex items-center justify-between">
+            <div class="flex items-center gap-3.5">
+                <div class="w-11 h-11 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center group-hover:scale-105 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
                 </div>
                 <div>
-                    <h3 class="text-sm font-bold text-slate-900 group-hover:text-teal-700 transition">إيداع نقدي للعميل (Cash-In)</h3>
-                    <p class="text-xs text-slate-400 mt-0.5">تغذية رصيد العميل بكافة العملات فوراً</p>
+                    <h3 class="text-xs font-bold text-slate-900 group-hover:text-teal-700 transition">إيداع نقدي (Cash-In)</h3>
+                    <p class="text-[11px] text-slate-400 mt-0.5">تغذية رصيد العميل فوراً</p>
                 </div>
             </div>
-            <svg class="w-5 h-5 text-slate-300 group-hover:text-teal-700 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+            <svg class="w-4 h-4 text-slate-300 group-hover:text-teal-700 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
         </a>
 
-        <a href="{{ route('agent.withdraw.form') }}" class="group bg-white p-6 rounded-2xl border border-slate-200/80 shadow-soft hover:border-amber-500 hover:shadow-card transition flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-800 flex items-center justify-center group-hover:scale-105 transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75"/></svg>
+        <a href="{{ route('agent.withdraw.form') }}" class="group bg-white p-5 rounded-2xl border border-slate-200/80 shadow-soft hover:border-amber-500 hover:shadow-card transition flex items-center justify-between">
+            <div class="flex items-center gap-3.5">
+                <div class="w-11 h-11 rounded-2xl bg-amber-50 text-amber-800 flex items-center justify-center group-hover:scale-105 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75"/></svg>
                 </div>
                 <div>
-                    <h3 class="text-sm font-bold text-slate-900 group-hover:text-amber-800 transition">سحب نقدي للعميل (Cash-Out)</h3>
-                    <p class="text-xs text-slate-400 mt-0.5">سحب كاش مؤكد برمز التحقق الآمن OTP</p>
+                    <h3 class="text-xs font-bold text-slate-900 group-hover:text-amber-800 transition">سحب نقدي (Cash-Out)</h3>
+                    <p class="text-[11px] text-slate-400 mt-0.5">سحب كاش بكود OTP</p>
                 </div>
             </div>
-            <svg class="w-5 h-5 text-slate-300 group-hover:text-amber-800 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+            <svg class="w-4 h-4 text-slate-300 group-hover:text-amber-800 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+        </a>
+
+        <a href="{{ route('agent.remittance.form') }}" class="group bg-white p-5 rounded-2xl border border-slate-200/80 shadow-soft hover:border-blue-500 hover:shadow-card transition flex items-center justify-between">
+            <div class="flex items-center gap-3.5">
+                <div class="w-11 h-11 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center group-hover:scale-105 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z"/></svg>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-slate-900 group-hover:text-blue-700 transition">صرف حوالة نقدية</h3>
+                    <p class="text-[11px] text-slate-400 mt-0.5">صرف كاش بالرقم والكود السري</p>
+                </div>
+            </div>
+            <svg class="w-4 h-4 text-slate-300 group-hover:text-blue-700 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
         </a>
     </div>
+
 
     <!-- Recent Cash Transactions Stream -->
     <div class="bg-white rounded-2xl border border-slate-200/80 shadow-soft overflow-hidden">

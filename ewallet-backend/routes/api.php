@@ -26,6 +26,10 @@ Route::prefix('agent')->group(function () {
         Route::post('/deposit', [\App\Http\Controllers\Api\AgentApiController::class, 'deposit']);
         Route::post('/withdraw/request', [\App\Http\Controllers\Api\AgentApiController::class, 'requestWithdraw']);
         Route::post('/withdraw/verify', [\App\Http\Controllers\Api\AgentApiController::class, 'verifyWithdraw']);
+        
+        // Agent Cash Remittance Payout Endpoints
+        Route::post('/remittance/search', [\App\Http\Controllers\Api\AgentApiController::class, 'searchRemittance']);
+        Route::post('/remittance/payout', [\App\Http\Controllers\Api\AgentApiController::class, 'payoutRemittance']);
     });
 });
 
@@ -66,5 +70,12 @@ Route::middleware(['jwt.auth'])->group(function () {
         Route::post('/exchange/preview', [WalletController::class, 'previewExchange']);
         Route::post('/exchange', [WalletController::class, 'exchange']);
         Route::get('/transactions', [WalletController::class, 'transactions']);
+
+        // Cash Remittance (Send to non-subscriber & management)
+        Route::post('/remittance/preview', [WalletController::class, 'previewRemittance']);
+        Route::post('/remittance/send', [WalletController::class, 'sendRemittance']);
+        Route::get('/remittances', [WalletController::class, 'myRemittances']);
+        Route::post('/remittance/{id}/cancel', [WalletController::class, 'cancelRemittance']);
     });
 });
+
