@@ -157,11 +157,12 @@ class AgentWebController extends Controller
         }
 
         // Execute Deposit with DB::transaction
-        DB::transaction(function () use ($agent, $user, $amount, $currency, $request) {
+        $tx = null;
+        DB::transaction(function () use ($agent, $user, $amount, $currency, $request, &$tx) {
             $agent->decrementCurrency($currency, $amount);
             $user->incrementCurrency($currency, $amount);
 
-            Transaction::create([
+            $tx = Transaction::create([
                 'user_id' => $user->id,
                 'agent_id' => $agent->id,
                 'type' => 'deposit',
@@ -181,7 +182,22 @@ class AgentWebController extends Controller
             ]);
         });
 
-        return redirect()->route('agent.dashboard')->with('success', "تم إيداع مبلغ " . number_format($amount, 2) . " {$currency} بنجاح في حساب العميل {$user->full_name}.");
+        $receipt = [
+            'type' => 'deposit',
+            'title' => 'سند إيداع نقدي فوري',
+            'amount' => $amount,
+            'currency' => $currency,
+            'user_name' => $user->full_name,
+            'user_phone' => $user->phone,
+            'agent_name' => $agent->full_name,
+            'reference' => strtoupper(substr($tx->id ?? uniqid(), 0, 13)),
+            'date' => now()->format('Y-m-d H:i:s'),
+            'notes' => $request->input('notes'),
+        ];
+
+        return redirect()->route('agent.dashboard')
+            ->with('success', "تم إيداع مبلغ " . number_format($amount, 2) . " {$currency} بنجاح في حساب العميل {$user->full_name}.")
+            ->with('receipt', $receipt);
     }
 
     /**
@@ -284,14 +300,15 @@ class AgentWebController extends Controller
         }
 
         // Complete Withdrawal inside DB::transaction
-        DB::transaction(function () use ($agent, $user, $amount, $fee, $agentCommission, $totalDebit, $currency) {
+        $tx = null;
+        DB::transaction(function () use ($agent, $user, $amount, $fee, $agentCommission, $totalDebit, $currency, &$tx) {
             // Deduct total (amount + fee) from user
             $user->decrementCurrency($currency, $totalDebit);
 
             // Credit agent with cash replenishment + earned commission share!
             $agent->incrementCurrency($currency, $amount + $agentCommission);
 
-            Transaction::create([
+            $tx = Transaction::create([
                 'user_id' => $user->id,
                 'agent_id' => $agent->id,
                 'type' => 'withdraw',
@@ -326,7 +343,23 @@ class AgentWebController extends Controller
             }
         });
 
-        return redirect()->route('agent.dashboard')->with('success', "تم تأكيد سحب مبلغ " . number_format($amount, 2) . " {$currency} بنجاح وتسليمه للعميل {$user->full_name}، وتمت إضافة عمولة الربح (" . number_format($agentCommission, 2) . " {$currency}) إلى رصيدك.");
+        $receipt = [
+            'type' => 'withdraw',
+            'title' => 'سند سحب نقدي موثق (OTP)',
+            'amount' => $amount,
+            'currency' => $currency,
+            'user_name' => $user->full_name,
+            'user_phone' => $user->phone,
+            'agent_name' => $agent->full_name,
+            'fee' => $fee,
+            'agent_commission' => $agentCommission,
+            'reference' => strtoupper(substr($tx->id ?? uniqid(), 0, 13)),
+            'date' => now()->format('Y-m-d H:i:s'),
+        ];
+
+        return redirect()->route('agent.dashboard')
+            ->with('success', "تم تأكيد سحب مبلغ " . number_format($amount, 2) . " {$currency} بنجاح وتسليمه للعميل {$user->full_name}، وتمت إضافة عمولة الربح (" . number_format($agentCommission, 2) . " {$currency}) إلى رصيدك.")
+            ->with('receipt', $receipt);
     }
 
     /**
@@ -460,7 +493,8 @@ class AgentWebController extends Controller
         $idType = trim($request->input('recipient_id_type'));
         $idNumber = trim($request->input('recipient_id_number'));
 
-        DB::transaction(function () use ($agent, $remittance, $idType, $idNumber) {
+        $tx = null;
+        DB::transaction(function () use ($agent, $remittance, $idType, $idNumber, &$tx) {
             // Update Remittance to Paid
             $remittance->update([
                 'status' => 'paid',
@@ -475,7 +509,7 @@ class AgentWebController extends Controller
             $agent->incrementCurrency($remittance->currency, $totalCredit);
 
             // Record transaction for agent
-            Transaction::create([
+            $tx = Transaction::create([
                 'agent_id' => $agent->id,
                 'user_id' => $remittance->sender_id,
                 'type' => 'withdraw',
@@ -500,7 +534,24 @@ class AgentWebController extends Controller
             }
         });
 
-        return redirect()->route('agent.remittance.form')->with('success', "تم صرف الحوالة بنجاح بمبلغ " . number_format($remittance->amount, 2) . " {$remittance->currency} للمستلم ({$remittance->recipient_name})، وتمت إضافة عمولتكم ({$remittance->agent_commission} {$remittance->currency}) إلى رصيدكم.");
+        $receipt = [
+            'type' => 'remittance_payout',
+            'title' => 'سند صرف حوالة نقدية',
+            'amount' => $remittance->amount,
+            'currency' => $remittance->currency,
+            'recipient_name' => $remittance->recipient_name,
+            'recipient_phone' => $remittance->recipient_phone,
+            'sender_name' => $remittance->sender_name,
+            'agent_name' => $agent->full_name,
+            'remittance_code' => $remittance->remittance_code,
+            'agent_commission' => $remittance->agent_commission,
+            'reference' => strtoupper(substr($tx->id ?? uniqid(), 0, 13)),
+            'date' => now()->format('Y-m-d H:i:s'),
+        ];
+
+        return redirect()->route('agent.remittance.form')
+            ->with('success', "تم صرف الحوالة بنجاح بمبلغ " . number_format($remittance->amount, 2) . " {$remittance->currency} للمستلم ({$remittance->recipient_name})، وتمت إضافة عمولتكم ({$remittance->agent_commission} {$remittance->currency}) إلى رصيدكم.")
+            ->with('receipt', $receipt);
     }
 }
 

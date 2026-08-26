@@ -375,7 +375,8 @@ class AdminWebController extends Controller
             return back()->withErrors(['amount' => "الرصيد الحالي بعملة {$currency} ({$curBal}) غير كافٍ لإجراء الخصم."])->withInput();
         }
 
-        DB::transaction(function () use ($entity, $targetType, $operation, $amount, $currency, $reason, $adminId) {
+        $tx = null;
+        DB::transaction(function () use ($entity, $targetType, $operation, $amount, $currency, $reason, $adminId, &$tx) {
             if ($operation === 'credit') {
                 $entity->incrementCurrency($currency, $amount);
                 $txType = 'deposit';
@@ -386,7 +387,7 @@ class AdminWebController extends Controller
                 $actionText = 'خصم إداري';
             }
 
-            Transaction::create([
+            $tx = Transaction::create([
                 'user_id' => $targetType === 'user' ? $entity->id : null,
                 'agent_id' => $targetType === 'agent' ? $entity->id : null,
                 'admin_id' => $adminId,
@@ -407,7 +408,22 @@ class AdminWebController extends Controller
             ]);
         });
 
-        return back()->with('success', "تم تنفيذ التسوية بنجاح بمبلغ " . number_format($amount, 2) . " {$currency} على حساب {$entity->full_name}.");
+        $receipt = [
+            'type' => 'adjustment',
+            'title' => $operation === 'credit' ? 'سند تسوية وتغذية رصيد إدارية (+)' : 'سند تسوية وخصم إداري (-)',
+            'amount' => $amount,
+            'currency' => $currency,
+            'target_name' => $entity->full_name,
+            'target_type' => $targetType === 'user' ? 'مشترك (عميل)' : 'وكيل معتمد',
+            'operation' => $operation === 'credit' ? 'تغذية رصيد (+)' : 'خصم مباشر (-)',
+            'reason' => $reason,
+            'reference' => strtoupper(substr($tx->id ?? uniqid(), 0, 13)),
+            'date' => now()->format('Y-m-d H:i:s'),
+        ];
+
+        return back()
+            ->with('success', "تم تنفيذ التسوية بنجاح بمبلغ " . number_format($amount, 2) . " {$currency} على حساب {$entity->full_name}.")
+            ->with('receipt', $receipt);
     }
 
     /**
