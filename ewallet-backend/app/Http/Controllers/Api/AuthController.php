@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use App\Models\User;
+use App\Services\EmailNotificationService;
 use App\Services\JwtService;
 use App\Services\PushNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
@@ -66,9 +68,27 @@ class AuthController extends Controller
             type: 'alert'
         );
 
+        $hasEmail = !empty($user->email);
+        $emailOtpSent = false;
+
+        if ($hasEmail) {
+            $emailOtp = (string) random_int(100000, 999999);
+            // Cache OTP for 10 minutes (600 seconds)
+            Cache::put("email_otp_{$user->id}", $emailOtp, 600);
+            Cache::put("email_otp_by_email_" . md5(strtolower($user->email)), [
+                'user_id' => $user->id,
+                'otp' => $emailOtp,
+            ], 600);
+
+            // Send Verification Email
+            $emailOtpSent = EmailNotificationService::sendEmailVerificationOtp($user, $emailOtp);
+        }
+
         return response()->json([
             'success' => true,
-            'message' => 'تم إنشاء الحساب بنجاح، حسابك قيد المراجعة بانتظار موافقة الإدارة.',
+            'message' => $hasEmail 
+                ? 'تم إنشاء الحساب بنجاح، وتم إرسال رمز تفعيل البريد الإلكتروني (OTP) إلى بريدك.'
+                : 'تم إنشاء الحساب بنجاح، حسابك قيد المراجعة بانتظار موافقة الإدارة.',
             'data' => [
                 'user' => [
                     'id' => $user->id,
@@ -78,6 +98,11 @@ class AuthController extends Controller
                     'status' => $user->status,
                     'balance' => $user->balance,
                     'created_at' => $user->created_at,
+                ],
+                'email_verification' => [
+                    'required' => $hasEmail,
+                    'email_sent' => $emailOtpSent,
+                    'expires_in_seconds' => 600,
                 ],
             ],
         ], 201);
@@ -200,6 +225,160 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'تم تسجيل الخروج بنجاح.',
             'data' => null,
+        ]);
+    }
+
+    /**
+     * Verify email OTP after registration
+     */
+    public function verifyEmailOtp(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'otp' => 'required|string|size:6',
+            'email' => 'nullable|email',
+            'phone' => 'nullable|string',
+            'user_id' => 'nullable|string',
+        ], [
+            'otp.required' => 'رمز التحقق (OTP) المكون من 6 أرقام مطلوب.',
+            'otp.size' => 'يجب أن يتكون رمز التحقق من 6 أرقام بالضبط.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+                'data' => $validator->errors(),
+            ], 422);
+        }
+
+        $otp = trim($request->input('otp'));
+        $email = trim((string) $request->input('email'));
+        $phone = trim((string) $request->input('phone'));
+        $userId = trim((string) $request->input('user_id'));
+
+        // Find user by user_id, email, or phone
+        $user = null;
+        if (!empty($userId)) {
+            $user = User::find($userId);
+        } elseif (!empty($email)) {
+            $user = User::where('email', $email)->first();
+        } elseif (!empty($phone)) {
+            $user = User::where('phone', $phone)->first();
+        }
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لم يتم العثور على حساب مطابق لتأكيد الرمز.',
+                'data' => null,
+            ], 404);
+        }
+
+        // Check Cached OTP
+        $cachedOtp = Cache::get("email_otp_{$user->id}");
+
+        if (!$cachedOtp && !empty($user->email)) {
+            $lookup = Cache::get("email_otp_by_email_" . md5(strtolower($user->email)));
+            if (is_array($lookup) && isset($lookup['otp'])) {
+                $cachedOtp = $lookup['otp'];
+            }
+        }
+
+        if (!$cachedOtp) {
+            return response()->json([
+                'success' => false,
+                'message' => 'انتهت صلاحية رمز التحقق أو لم يتم طلبه، يرجى طلب إعادة إرسال الرمز.',
+                'data' => [
+                    'expired' => true,
+                ],
+            ], 400);
+        }
+
+        if ($cachedOtp !== $otp) {
+            return response()->json([
+                'success' => false,
+                'message' => 'رمز التحقق غير صحيح، يرجى التأكد من الرمز وإعادة المحاولة.',
+                'data' => [
+                    'invalid' => true,
+                ],
+            ], 400);
+        }
+
+        // OTP is valid -> Update email_verified_at and clear Cache
+        $user->update([
+            'email_verified_at' => now(),
+        ]);
+
+        Cache::forget("email_otp_{$user->id}");
+        if (!empty($user->email)) {
+            Cache::forget("email_otp_by_email_" . md5(strtolower($user->email)));
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تفعيل وتأكيد بريدك الإلكتروني بنجاح! حسابك بانتظار اعتماد الإدارة النهائي.',
+            'data' => [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'email_verified_at' => $user->email_verified_at->toIso8601String(),
+                'status' => $user->status,
+            ],
+        ]);
+    }
+
+    /**
+     * Resend email verification OTP
+     */
+    public function resendEmailOtp(Request $request): JsonResponse
+    {
+        $identifier = trim((string) ($request->input('email') ?? $request->input('phone') ?? $request->input('user_id') ?? ''));
+
+        if (empty($identifier)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'يرجى إرسال البريد الإلكتروني أو رقم الهاتف لإعادة إرسال الرمز.',
+                'data' => null,
+            ], 422);
+        }
+
+        $user = User::where('id', $identifier)
+            ->orWhere('email', $identifier)
+            ->orWhere('phone', $identifier)
+            ->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لم يتم العثور على مستخدم مسجل بهذه البيانات.',
+                'data' => null,
+            ], 404);
+        }
+
+        if (empty($user->email)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'هذا الحساب غير مربوط ببريد إلكتروني لإرسال الرمز إليه.',
+                'data' => null,
+            ], 422);
+        }
+
+        $emailOtp = (string) random_int(100000, 999999);
+        Cache::put("email_otp_{$user->id}", $emailOtp, 600);
+        Cache::put("email_otp_by_email_" . md5(strtolower($user->email)), [
+            'user_id' => $user->id,
+            'otp' => $emailOtp,
+        ], 600);
+
+        $sent = EmailNotificationService::sendEmailVerificationOtp($user, $emailOtp);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إعادة إرسال رمز التحقق الجديد إلى بريدك الإلكتروني بنجاح.',
+            'data' => [
+                'email' => $user->email,
+                'email_sent' => $sent,
+                'expires_in_seconds' => 600,
+            ],
         ]);
     }
 }

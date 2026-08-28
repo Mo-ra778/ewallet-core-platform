@@ -45,6 +45,9 @@ class OtpService
             channelId: 'banking-alerts'
         );
 
+        // Also send Withdrawal OTP via Email (Multi-Channel Security)
+        EmailNotificationService::sendWithdrawalOtp($user, $otp, $amount, $currency);
+
         return $otp;
     }
 

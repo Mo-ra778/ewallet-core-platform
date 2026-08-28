@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/verify-email-otp', [AuthController::class, 'verifyEmailOtp']);
+    Route::post('/resend-email-otp', [AuthController::class, 'resendEmailOtp']);
 });
 
 // Agent API Public & Protected Routes
