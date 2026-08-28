@@ -107,11 +107,15 @@ class NotificationController extends Controller
      */
     public function registerPushToken(Request $request): JsonResponse
     {
-        $request->validate([
-            'push_token' => 'required|string|max:255',
-        ], [
-            'push_token.required' => 'رمز توكن الإشعارات (push_token) مطلوب.',
-        ]);
+        $pushToken = trim((string) ($request->input('push_token') ?? $request->input('token') ?? ''));
+
+        if (empty($pushToken)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'رمز توكن الإشعارات (push_token أو token) مطلوب.',
+                'data' => null,
+            ], 422);
+        }
 
         /** @var User $user */
         $user = $request->user();
@@ -124,7 +128,6 @@ class NotificationController extends Controller
             ], 403);
         }
 
-        $pushToken = trim($request->input('push_token'));
         $user->update(['push_token' => $pushToken]);
 
         return response()->json([

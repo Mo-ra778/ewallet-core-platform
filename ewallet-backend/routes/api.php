@@ -60,6 +60,7 @@ Route::middleware(['jwt.auth'])->group(function () {
         Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
         Route::post('/read-all', [NotificationController::class, 'markAllAsRead']);
         Route::post('/register-token', [NotificationController::class, 'registerPushToken']);
+        Route::post('/push-token', [NotificationController::class, 'registerPushToken']);
         Route::post('/{id}/read', [NotificationController::class, 'markAsRead']);
     });
 
