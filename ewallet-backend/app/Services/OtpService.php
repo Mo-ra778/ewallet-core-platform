@@ -29,15 +29,21 @@ class OtpService
 
         Cache::put($cacheKey, $payload, $this->ttlSeconds);
 
-        // Create an in-app notification for the user with the OTP
-        Notification::create([
-            'recipient_id' => $user->id,
-            'recipient_type' => 'user',
-            'title' => 'رمز التحقق للسحب النقدي (OTP)',
-            'message' => "طلب سحب نقدي بمبلغ {$amount} {$currency} عبر الوكيل. رمز التأكيد الخاص بك هو: [ {$otp} ]. ينتهي خلال 5 دقائق.",
-            'type' => 'otp',
-            'is_read' => false,
-        ]);
+        // Create an in-app notification & push notification to user's device
+        PushNotificationService::sendToUser(
+            user: $user,
+            title: '🔐 رمز التحقق للسحب النقدي (OTP)',
+            message: "طلب سحب نقدي بمبلغ {$amount} {$currency} عبر الوكيل. رمز التأكيد الخاص بك هو: [ {$otp} ]. ينتهي خلال 5 دقائق.",
+            data: [
+                'type' => 'otp',
+                'otp' => $otp,
+                'amount' => $amount,
+                'currency' => $currency,
+            ],
+            type: 'otp',
+            sound: 'default',
+            channelId: 'banking-alerts'
+        );
 
         return $otp;
     }

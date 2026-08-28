@@ -130,7 +130,7 @@
                                     <form action="{{ route('admin.users.status', $user->id) }}" method="POST" class="inline">
                                         @csrf
                                         <input type="hidden" name="status" value="suspended">
-                                        <button type="submit" onclick="return confirm('تأكيد تعليق حساب العميل؟')" class="text-rose-600 hover:bg-rose-50 font-semibold text-[11px] px-2.5 py-1.5 rounded-xl transition border border-rose-200/80">
+                                        <button type="button" onclick="const f = this.closest('form'); showConfirmDialog({ title: 'تعليق حساب العميل', message: 'هل أنت متأكد من تعليق حساب هذا العميل؟ لن يتمكن من إجراء أي عمليات مالية.', confirmText: 'نعم، تعليق الحساب', confirmType: 'danger', onConfirm: () => f.submit() });" class="text-rose-600 hover:bg-rose-50 font-semibold text-[11px] px-2.5 py-1.5 rounded-xl transition border border-rose-200/80">
                                             تعليق
                                         </button>
                                     </form>

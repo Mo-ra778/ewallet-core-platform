@@ -9,6 +9,7 @@ use App\Models\SystemSetting;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\FeeService;
+use App\Services\PushNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -168,24 +169,22 @@ class WalletController extends Controller
             ]);
 
             // Notify Sender
-            Notification::create([
-                'recipient_id' => $sender->id,
-                'recipient_type' => 'user',
-                'title' => 'عملية تحويل صادرة',
-                'message' => "تم تحويل " . number_format($amount, 2) . " {$currency} بنجاح إلى {$receiver->full_name}" . ($fee > 0 ? " (رسوم: " . number_format($fee, 2) . " {$currency})" : '') . ".",
-                'type' => 'transaction',
-                'is_read' => false,
-            ]);
+            PushNotificationService::sendToUser(
+                user: $sender,
+                title: '📤 عملية تحويل صادرة',
+                message: "تم تحويل " . number_format($amount, 2) . " {$currency} بنجاح إلى {$receiver->full_name}" . ($fee > 0 ? " (رسوم: " . number_format($fee, 2) . " {$currency})" : '') . ".",
+                data: ['type' => 'transfer', 'direction' => 'outgoing', 'transaction_id' => $senderTx->id],
+                type: 'transaction'
+            );
 
             // Notify Receiver
-            Notification::create([
-                'recipient_id' => $receiver->id,
-                'recipient_type' => 'user',
-                'title' => 'عملية تحويل واردة',
-                'message' => "وصلك مبلغ " . number_format($amount, 2) . " {$currency} من {$sender->full_name}.",
-                'type' => 'transaction',
-                'is_read' => false,
-            ]);
+            PushNotificationService::sendToUser(
+                user: $receiver,
+                title: '📥 عملية تحويل واردة',
+                message: "وصلك مبلغ " . number_format($amount, 2) . " {$currency} من {$sender->full_name}.",
+                data: ['type' => 'transfer', 'direction' => 'incoming', 'amount' => $amount, 'currency' => $currency],
+                type: 'transaction'
+            );
 
             return $senderTx;
         });
@@ -388,14 +387,13 @@ class WalletController extends Controller
             ]);
 
             // Notify user
-            Notification::create([
-                'recipient_id' => $user->id,
-                'recipient_type' => 'user',
-                'title' => 'عملية مصارفة عملات ناجحة',
-                'message' => "تم صرف " . number_format($amount, 2) . " {$from} واستلام " . number_format($netReceived, 2) . " {$to} في محفظتك بنجاح.",
-                'type' => 'transaction',
-                'is_read' => false,
-            ]);
+            PushNotificationService::sendToUser(
+                user: $user,
+                title: '💱 عملية مصارفة عملات ناجحة',
+                message: "تم صرف " . number_format($amount, 2) . " {$from} واستلام " . number_format($netReceived, 2) . " {$to} في محفظتك بنجاح.",
+                data: ['type' => 'exchange', 'from' => $from, 'to' => $to, 'amount' => $amount, 'received' => $netReceived],
+                type: 'transaction'
+            );
 
             return $tx;
         });
@@ -584,15 +582,14 @@ class WalletController extends Controller
                 'description' => "إصدار حوالة نقدية إلى {$recipientName} ({$recipientPhone}) - رقم الحوالة: {$remittanceCode}" . ($fee > 0 ? " (رسوم: {$fee} {$currency})" : ''),
             ]);
 
-            // Create In-App Notification with the Remittance details
-            Notification::create([
-                'recipient_id' => $sender->id,
-                'recipient_type' => 'user',
-                'title' => 'تم إصدار الحوالة النقدية بنجاح',
-                'message' => "تم إصدار حوالة بمبلغ " . number_format($amount, 2) . " {$currency} إلى {$recipientName}. رقم الحوالة: [ {$remittanceCode} ]، الكود السري: [ {$pinCode} ].",
-                'type' => 'transaction',
-                'is_read' => false,
-            ]);
+            // Create In-App Notification & Push Notification with the Remittance details
+            PushNotificationService::sendToUser(
+                user: $sender,
+                title: '📄 تم إصدار الحوالة النقدية بنجاح',
+                message: "تم إصدار حوالة بمبلغ " . number_format($amount, 2) . " {$currency} إلى {$recipientName}. رقم الحوالة: [ {$remittanceCode} ]، الكود السري: [ {$pinCode} ].",
+                data: ['type' => 'remittance', 'remittance_code' => $remittanceCode, 'amount' => $amount, 'currency' => $currency],
+                type: 'transaction'
+            );
 
             return $rem;
         });
@@ -692,15 +689,14 @@ class WalletController extends Controller
                 'description' => "استرجاع مبلغ حوالة ملغاة (رقم: {$remittance->remittance_code}) للمستلم {$remittance->recipient_name}",
             ]);
 
-            // In-app Notification
-            Notification::create([
-                'recipient_id' => $user->id,
-                'recipient_type' => 'user',
-                'title' => 'تم إلغاء الحوالة واسترجاع المبلغ',
-                'message' => "تم إلغاء الحوالة رقم {$remittance->remittance_code} واسترجاع مبلغ " . number_format($remittance->amount, 2) . " {$remittance->currency} إلى محفظتك بنجاح.",
-                'type' => 'transaction',
-                'is_read' => false,
-            ]);
+            // In-app Notification & Push
+            PushNotificationService::sendToUser(
+                user: $user,
+                title: '↩️ تم إلغاء الحوالة واسترجاع المبلغ',
+                message: "تم إلغاء الحوالة رقم {$remittance->remittance_code} واسترجاع مبلغ " . number_format($remittance->amount, 2) . " {$remittance->currency} إلى محفظتك بنجاح.",
+                data: ['type' => 'remittance_cancelled', 'remittance_code' => $remittance->remittance_code],
+                type: 'transaction'
+            );
         });
 
         $user->refresh();

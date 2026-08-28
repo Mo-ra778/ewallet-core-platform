@@ -92,7 +92,7 @@
                                         @csrf
                                         @if($agent->status === 'active')
                                             <input type="hidden" name="status" value="suspended">
-                                            <button type="submit" onclick="return confirm('تأكيد تعليق مركز الوكيل؟')" 
+                                            <button type="button" onclick="const f = this.closest('form'); showConfirmDialog({ title: 'تعليق مركز الوكيل', message: 'هل أنت متأكد من تعليق هذا الوكيل؟ لن يتمكن من تسجيل الدخول أو تنفيذ الإيداع والسحب.', confirmText: 'نعم، تعليق الوكيل', confirmType: 'danger', onConfirm: () => f.submit() });" 
                                                     class="text-rose-600 hover:bg-rose-50 font-semibold text-[11px] px-2.5 py-1.5 rounded-xl transition border border-rose-200/80 shadow-xs">
                                                 تعليق
                                             </button>

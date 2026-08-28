@@ -94,14 +94,14 @@
         </div>
 
         <!-- Payout Execution Form -->
-        <form action="{{ route('agent.remittance.payout') }}" method="POST" class="space-y-4 pt-2">
+        <form id="payout-form" action="{{ route('agent.remittance.payout') }}" method="POST" class="space-y-4 pt-2">
             @csrf
             <input type="hidden" name="remittance_id" value="{{ $remittance->id }}">
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-semibold text-slate-700 mb-1.5">نوع وثيقة إثبات الهوية <span class="text-rose-500">*</span></label>
-                    <select name="recipient_id_type" required class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600">
+                    <select id="doc-type-select" name="recipient_id_type" required class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600">
                         <option value="بطاقة شخصية / رقم قومي">بطاقة شخصية / رقم قومي</option>
                         <option value="جواز سفر">جواز سفر ساري</option>
                         <option value="رخصة قيادة">رخصة قيادة</option>
@@ -111,20 +111,108 @@
 
                 <div>
                     <label class="block text-xs font-semibold text-slate-700 mb-1.5">رقم وثيقة الهوية <span class="text-rose-500">*</span></label>
-                    <input type="text" name="recipient_id_number" required placeholder="أدخل رقم الهوية للمستلم"
+                    <input type="text" id="doc-num-input" name="recipient_id_number" required placeholder="أدخل رقم الهوية للمستلم"
                            class="w-full px-3.5 py-2.5 text-xs num-font bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600">
                 </div>
             </div>
 
             <div class="pt-2">
-                <button type="submit" onclick="return confirm('هل تأكدت من مطابقة هوية المستلم وجاهز لتسليم المبلغ نقداً؟');"
+                <button type="button" id="open-payout-modal-btn"
                         class="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2">
                     <svg class="w-5 h-5 text-emerald-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-                    <span>تأكيد صرف الحوالة وتسليم النقد ({{ number_format($remittance->amount, 2) }} {{ $remittance->currency }})</span>
+                    <span>مراجعة وتأكيد صرف الحوالة ({{ number_format($remittance->amount, 2) }} {{ $remittance->currency }})</span>
                 </button>
             </div>
         </form>
     </div>
+
+    <!-- Payout Confirmation Modal -->
+    <div id="payout-confirm-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-100 overflow-hidden transform transition-all animate-in fade-in zoom-in duration-150">
+            
+            <div class="bg-gradient-to-r from-emerald-700 to-emerald-800 text-white px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-emerald-100">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold">تأكيد تسليم الحوالة النقدية</h3>
+                        <p class="text-[11px] text-emerald-100/80">يرجى مطابقة هوية المستلم قبل تسليم النقد</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closePayoutModal()" class="text-white/70 hover:text-white text-lg font-bold p-1 rounded-lg hover:bg-white/10 transition">
+                    &times;
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-2.5 text-xs">
+                    <div class="flex justify-between pb-2 border-b border-slate-200/60">
+                        <span class="text-slate-500">اسم المستلم:</span>
+                        <strong class="text-slate-900">{{ $remittance->recipient_name }}</strong>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">رقم الهاتف:</span>
+                        <strong class="num-font text-slate-800" dir="ltr">{{ $remittance->recipient_phone }}</strong>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">إثبات الهوية:</span>
+                        <strong id="modal-doc-info" class="text-slate-800">-</strong>
+                    </div>
+                </div>
+
+                <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-4 text-center space-y-1">
+                    <span class="text-[11px] font-bold text-emerald-800 block">المبلغ النقدي الواجب تسليمه للمستلم باليد:</span>
+                    <div class="text-2xl font-black text-emerald-950 num-font">
+                        {{ number_format($remittance->amount, 2) }} {{ $remittance->currency }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button type="button" onclick="closePayoutModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-800 rounded-xl transition">
+                    تراجع
+                </button>
+                <button type="button" onclick="document.getElementById('payout-form').submit();" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-md">
+                    تأكيد مطابقة الهوية وتسليم النقد
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const payoutModal = document.getElementById('payout-confirm-modal');
+        const openBtn = document.getElementById('open-payout-modal-btn');
+        const docType = document.getElementById('doc-type-select');
+        const docNum = document.getElementById('doc-num-input');
+
+        if (openBtn) {
+            openBtn.addEventListener('click', function() {
+                if (!docNum.value.trim()) {
+                    docNum.focus();
+                    docNum.classList.add('ring-2', 'ring-amber-500', 'border-amber-500');
+                    setTimeout(() => docNum.classList.remove('ring-2', 'ring-amber-500', 'border-amber-500'), 2500);
+                    showAppToast('وثيقة إثبات الهوية', 'يرجى إدخال رقم وثيقة الهوية للمستلم أولاً للمتابعة.', 'warning');
+                    return;
+                }
+                document.getElementById('modal-doc-info').textContent = docType.value + ' - ' + docNum.value.trim();
+                payoutModal.classList.remove('hidden');
+            });
+        }
+
+        function closePayoutModal() {
+            if (payoutModal) payoutModal.classList.add('hidden');
+        }
+
+        window.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closePayoutModal();
+        });
+        if (payoutModal) {
+            payoutModal.addEventListener('click', function (e) {
+                if (e.target === payoutModal) closePayoutModal();
+            });
+        }
+    </script>
     @endif
 
 </div>

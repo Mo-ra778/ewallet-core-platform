@@ -123,7 +123,7 @@
                 @enderror
             </div>
 
-            <button type="submit" onclick="return confirm('تأكيد تنفيذ عملية التسوية المالية المباشرة وتسجيلها في دفتر الأستاذ العام؟')"
+            <button type="button" onclick="const f = this.closest('form'); showConfirmDialog({ title: 'تأكيد التسوية المالية المباشرة', message: 'هل أنت متأكد من تنفيذ عملية التسوية المالية المباشرة وتسجيلها في دفتر الأستاذ العام؟', confirmText: 'نعم، تنفيذ التسوية', confirmType: 'primary', onConfirm: () => f.submit() });"
                     class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 px-4 rounded-xl text-xs transition shadow-md mt-2 flex items-center justify-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                 <span>تنفيذ التسوية وتحديث الرصيد فوراً</span>

@@ -8,6 +8,7 @@ use App\Models\Notification;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\OtpService;
+use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -67,6 +68,53 @@ class AgentWebController extends Controller
     {
         session()->forget(['agent_id', 'agent_name']);
         return redirect()->route('agent.login.form')->with('success', 'تم تسجيل الخروج بنجاح.');
+    }
+
+    /**
+     * AJAX Lookup User details by Phone for instant UI validation & confirmation card
+     */
+    public function lookupUser(Request $request)
+    {
+        $phone = trim((string) $request->input('phone', ''));
+        if (empty($phone)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'يرجى إدخال رقم الهاتف.',
+            ], 422);
+        }
+
+        $user = User::where('phone', $phone)->first();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'العميل غير مسجل في النظام.',
+            ], 404);
+        }
+
+        $statusLabels = [
+            'active' => 'حساب نشط',
+            'pending' => 'بانتظار موافقة الإدارة',
+            'suspended' => 'حساب معلق',
+            'rejected' => 'حساب مرفوض',
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $user->id,
+                'full_name' => $user->full_name,
+                'phone' => $user->phone,
+                'status' => $user->status,
+                'status_label' => $statusLabels[$user->status] ?? $user->status,
+                'is_active' => $user->status === 'active',
+                'balances' => [
+                    'YER' => number_format($user->getCurrencyBalance('YER'), 0),
+                    'SAR' => number_format($user->getCurrencyBalance('SAR'), 2),
+                    'USD' => number_format($user->getCurrencyBalance('USD'), 2),
+                    'EUR' => number_format($user->getCurrencyBalance('EUR'), 2),
+                ],
+            ],
+        ]);
     }
 
     /**
@@ -172,14 +220,13 @@ class AgentWebController extends Controller
                 'description' => "إيداع نقدي ({$currency}) عبر الوكيل: {$agent->full_name}" . ($request->input('notes') ? ' - ' . $request->input('notes') : ''),
             ]);
 
-            Notification::create([
-                'recipient_id' => $user->id,
-                'recipient_type' => 'user',
-                'title' => 'إيداع نقدي ناجح',
-                'message' => "تم إيداع مبلغ " . number_format($amount, 2) . " {$currency} في محفظتك بنجاح عبر الوكيل {$agent->full_name}.",
-                'type' => 'transaction',
-                'is_read' => false,
-            ]);
+            PushNotificationService::sendToUser(
+                user: $user,
+                title: '💵 إيداع نقدي ناجح',
+                message: "تم إيداع مبلغ " . number_format($amount, 2) . " {$currency} في محفظتك بنجاح عبر الوكيل {$agent->full_name}.",
+                data: ['type' => 'deposit', 'amount' => $amount, 'currency' => $currency],
+                type: 'transaction'
+            );
         });
 
         $receipt = [
@@ -321,14 +368,13 @@ class AgentWebController extends Controller
             ]);
 
             // Notify User
-            Notification::create([
-                'recipient_id' => $user->id,
-                'recipient_type' => 'user',
-                'title' => 'سحب نقدي مؤكد',
-                'message' => "تم تسليم مبلغ " . number_format($amount, 2) . " {$currency} نقداً من حسابك عبر الوكيل {$agent->full_name}" . ($fee > 0 ? " (رسوم الخدمة: " . number_format($fee, 2) . " {$currency})" : '') . ".",
-                'type' => 'transaction',
-                'is_read' => false,
-            ]);
+            PushNotificationService::sendToUser(
+                user: $user,
+                title: '🏧 سحب نقدي مؤكد',
+                message: "تم تسليم مبلغ " . number_format($amount, 2) . " {$currency} نقداً من حسابك عبر الوكيل {$agent->full_name}" . ($fee > 0 ? " (رسوم الخدمة: " . number_format($fee, 2) . " {$currency})" : '') . ".",
+                data: ['type' => 'withdraw', 'amount' => $amount, 'currency' => $currency],
+                type: 'transaction'
+            );
 
             // Notify Agent of commission earned
             if ($agentCommission > 0) {
@@ -523,14 +569,13 @@ class AgentWebController extends Controller
 
             // If sender is a registered user, notify them
             if ($remittance->sender_id) {
-                Notification::create([
-                    'recipient_id' => $remittance->sender_id,
-                    'recipient_type' => 'user',
-                    'title' => 'تم استلام وصرف الحوالة',
-                    'message' => "قام المستلم {$remittance->recipient_name} باستلام الحوالة رقم {$remittance->remittance_code} بمبلغ " . number_format($remittance->amount, 2) . " {$remittance->currency} نقداً عبر نقطتكم المعتمدة.",
-                    'type' => 'transaction',
-                    'is_read' => false,
-                ]);
+                PushNotificationService::sendToUser(
+                    user: $remittance->sender_id,
+                    title: '✅ تم استلام وصرف الحوالة',
+                    message: "قام المستلم {$remittance->recipient_name} باستلام الحوالة رقم {$remittance->remittance_code} بمبلغ " . number_format($remittance->amount, 2) . " {$remittance->currency} نقداً عبر نقطتكم المعتمدة.",
+                    data: ['type' => 'remittance_paid', 'remittance_code' => $remittance->remittance_code],
+                    type: 'transaction'
+                );
             }
         });
 

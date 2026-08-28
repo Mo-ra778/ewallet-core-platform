@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\JwtService;
 use App\Services\OtpService;
+use App\Services\PushNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -121,13 +122,13 @@ class AgentApiController extends Controller
                 'description' => "إيداع نقدي ({$currency}) عبر الوكيل: {$agent->full_name}",
             ]);
 
-            Notification::create([
-                'recipient_id' => $user->id,
-                'recipient_type' => 'user',
-                'title' => 'إيداع نقدي ناجح',
-                'message' => "تم إيداع مبلغ " . number_format($amount, 2) . " {$currency} في محفظتك عبر الوكيل {$agent->full_name}.",
-                'type' => 'transaction',
-            ]);
+            PushNotificationService::sendToUser(
+                user: $user,
+                title: '💵 إيداع نقدي ناجح',
+                message: "تم إيداع مبلغ " . number_format($amount, 2) . " {$currency} في محفظتك عبر الوكيل {$agent->full_name}.",
+                data: ['type' => 'deposit', 'amount' => $amount, 'currency' => $currency],
+                type: 'transaction'
+            );
 
             return $transaction;
         });
@@ -239,13 +240,13 @@ class AgentApiController extends Controller
                 'description' => "سحب نقدي ({$currency}) عبر الوكيل: {$agent->full_name}",
             ]);
 
-            Notification::create([
-                'recipient_id' => $user->id,
-                'recipient_type' => 'user',
-                'title' => 'سحب نقدي مؤكد',
-                'message' => "تم تسليم مبلغ " . number_format($amount, 2) . " {$currency} نقداً عبر الوكيل {$agent->full_name}.",
-                'type' => 'transaction',
-            ]);
+            PushNotificationService::sendToUser(
+                user: $user,
+                title: '🏧 سحب نقدي مؤكد',
+                message: "تم تسليم مبلغ " . number_format($amount, 2) . " {$currency} نقداً عبر الوكيل {$agent->full_name}.",
+                data: ['type' => 'withdraw', 'amount' => $amount, 'currency' => $currency],
+                type: 'transaction'
+            );
 
             return $transaction;
         });
@@ -421,14 +422,13 @@ class AgentApiController extends Controller
 
             // If sender is a user, notify them that remittance was paid out
             if ($remittance->sender_id) {
-                Notification::create([
-                    'recipient_id' => $remittance->sender_id,
-                    'recipient_type' => 'user',
-                    'title' => 'تم استلام وصرف الحوالة',
-                    'message' => "قام المستلم {$remittance->recipient_name} باستلام الحوالة رقم {$remittance->remittance_code} بمبلغ " . number_format($remittance->amount, 2) . " {$remittance->currency} نقداً عبر الوكيل {$agent->full_name}.",
-                    'type' => 'transaction',
-                    'is_read' => false,
-                ]);
+                PushNotificationService::sendToUser(
+                    user: $remittance->sender_id,
+                    title: '✅ تم استلام وصرف الحوالة',
+                    message: "قام المستلم {$remittance->recipient_name} باستلام الحوالة رقم {$remittance->remittance_code} بمبلغ " . number_format($remittance->amount, 2) . " {$remittance->currency} نقداً عبر الوكيل {$agent->full_name}.",
+                    data: ['type' => 'remittance_paid', 'remittance_code' => $remittance->remittance_code],
+                    type: 'transaction'
+                );
             }
 
             return $transaction;

@@ -23,6 +23,7 @@ class User extends Authenticatable
         'balance_usd',
         'balance_eur',
         'status',
+        'push_token',
     ];
 
     protected $hidden = [

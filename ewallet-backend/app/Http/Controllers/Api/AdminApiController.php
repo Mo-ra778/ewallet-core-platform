@@ -7,6 +7,7 @@ use App\Models\Admin;
 use App\Models\Notification;
 use App\Models\User;
 use App\Services\JwtService;
+use App\Services\PushNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -96,13 +97,13 @@ class AdminApiController extends Controller
 
         $user->update(['status' => 'active']);
 
-        Notification::create([
-            'recipient_id' => $user->id,
-            'recipient_type' => 'user',
-            'title' => 'تمت الموافقة على الحساب',
-            'message' => 'تمت الموافقة على حسابك وتفعيله بنجاح، يمكنك الآن استخدام المحفظة.',
-            'type' => 'alert',
-        ]);
+        PushNotificationService::sendToUser(
+            user: $user,
+            title: '🎉 تمت الموافقة على الحساب',
+            message: 'تمت الموافقة على حسابك وتفعيله بنجاح، يمكنك الآن استخدام المحفظة.',
+            data: ['type' => 'account_approved', 'status' => 'active'],
+            type: 'alert'
+        );
 
         return response()->json([
             'success' => true,
@@ -129,13 +130,13 @@ class AdminApiController extends Controller
 
         $user->update(['status' => 'rejected']);
 
-        Notification::create([
-            'recipient_id' => $user->id,
-            'recipient_type' => 'user',
-            'title' => 'رفض طلب التسجيل',
-            'message' => 'تم رفض طلب التسجيل، يرجى التواصل مع الإدارة.',
-            'type' => 'alert',
-        ]);
+        PushNotificationService::sendToUser(
+            user: $user,
+            title: '⚠️ رفض طلب التسجيل',
+            message: 'تم رفض طلب التسجيل، يرجى التواصل مع إدارة النظام.',
+            data: ['type' => 'account_rejected', 'status' => 'rejected'],
+            type: 'alert'
+        );
 
         return response()->json([
             'success' => true,
@@ -164,13 +165,13 @@ class AdminApiController extends Controller
             return response()->json(['success' => false, 'message' => 'المستخدم غير موجود.'], 404);
         }
 
-        Notification::create([
-            'recipient_id' => $user->id,
-            'recipient_type' => 'user',
-            'title' => $request->input('title', 'تنبيه من الإدارة'),
-            'message' => $request->input('message'),
-            'type' => 'message',
-        ]);
+        PushNotificationService::sendToUser(
+            user: $user,
+            title: $request->input('title', '📢 تنبيه من الإدارة'),
+            message: $request->input('message'),
+            data: ['type' => 'admin_message'],
+            type: 'message'
+        );
 
         return response()->json([
             'success' => true,

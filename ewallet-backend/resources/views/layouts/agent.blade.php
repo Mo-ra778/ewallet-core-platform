@@ -297,6 +297,55 @@
 
     <!-- Toast & Modal Interaction Script -->
     <script>
+        function showAppToast(title, message, type = 'warning') {
+            let container = document.getElementById('global-toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'global-toast-container';
+                container.className = 'fixed top-5 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-full max-w-md px-4 pointer-events-none';
+                document.body.appendChild(container);
+            }
+
+            const toastId = 'toast-' + Math.random().toString(36).substr(2, 9);
+            const bgMap = {
+                'warning': 'bg-amber-50 border-amber-200/90 text-amber-950',
+                'error': 'bg-rose-50 border-rose-200/90 text-rose-950',
+                'success': 'bg-emerald-50 border-emerald-200/90 text-emerald-950',
+                'info': 'bg-blue-50 border-blue-200/90 text-blue-950',
+            };
+            const iconMap = {
+                'warning': '<div class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold flex-shrink-0 shadow-xs"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg></div>',
+                'error': '<div class="w-8 h-8 rounded-xl bg-rose-500 text-white flex items-center justify-center font-bold flex-shrink-0 shadow-xs"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg></div>',
+                'success': '<div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold flex-shrink-0 shadow-xs"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg></div>',
+                'info': '<div class="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold flex-shrink-0 shadow-xs"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/></svg></div>',
+            };
+
+            const card = document.createElement('div');
+            card.id = toastId;
+            card.className = `pointer-events-auto border shadow-xl rounded-2xl p-4 flex items-center justify-between gap-3 transition-all duration-300 transform translate-y-0 opacity-100 ${bgMap[type] || bgMap['warning']}`;
+            card.innerHTML = `
+                <div class="flex items-center gap-3">
+                    ${iconMap[type] || iconMap['warning']}
+                    <div>
+                        <span class="font-bold text-xs block leading-tight">${title}</span>
+                        <span class="text-[11px] opacity-90 leading-tight">${message}</span>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('${toastId}').remove()" class="p-1 rounded-lg hover:bg-black/5 transition text-current opacity-60 hover:opacity-100">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                </button>
+            `;
+
+            container.appendChild(card);
+            setTimeout(() => {
+                const el = document.getElementById(toastId);
+                if (el) {
+                    el.classList.add('opacity-0', '-translate-y-2');
+                    setTimeout(() => el.remove(), 300);
+                }
+            }, 4500);
+        }
+
         function dismissToast() {
             const toast = document.getElementById('live-toast');
             if (toast) {
@@ -314,9 +363,53 @@
             const refElem = document.getElementById('rcpt-ref');
             if (refElem) {
                 navigator.clipboard.writeText(refElem.innerText).then(() => {
-                    alert('تم نسخ رقم المرجع المحاسبي: ' + refElem.innerText);
+                    showAppToast('تم النسخ بنجاح', 'تم نسخ رقم المرجع المحاسبي: ' + refElem.innerText, 'success');
                 });
             }
+        }
+
+        function showConfirmDialog({ title = 'تأكيد العملية', message = 'هل أنت متأكد من تنفيذ هذا الإجراء؟', confirmText = 'نعم، تأكيد', confirmType = 'danger', onConfirm = null }) {
+            let modal = document.getElementById('global-agent-confirm-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'global-agent-confirm-modal';
+                modal.className = 'fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4';
+                document.body.appendChild(modal);
+            }
+            const isDanger = confirmType === 'danger';
+            const headerBg = isDanger ? 'bg-rose-600' : 'bg-slate-900';
+            const btnBg = isDanger ? 'bg-rose-600 hover:bg-rose-700' : 'bg-slate-900 hover:bg-slate-800';
+
+            modal.innerHTML = `
+                <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 overflow-hidden transform transition-all animate-in fade-in zoom-in duration-150">
+                    <div class="${headerBg} text-white px-5 py-3.5 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-lg">⚠️</span>
+                            <h3 class="text-xs font-bold">${title}</h3>
+                        </div>
+                        <button type="button" onclick="document.getElementById('global-agent-confirm-modal').classList.add('hidden')" class="text-white/70 hover:text-white text-lg font-bold p-1 rounded-lg">
+                            &times;
+                        </button>
+                    </div>
+                    <div class="p-5 text-xs text-slate-700 leading-relaxed font-medium">
+                        ${message}
+                    </div>
+                    <div class="bg-slate-50 px-5 py-3.5 border-t border-slate-100 flex items-center justify-end gap-2">
+                        <button type="button" onclick="document.getElementById('global-agent-confirm-modal').classList.add('hidden')" class="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 rounded-xl transition">
+                            إلغاء
+                        </button>
+                        <button type="button" id="global-agent-confirm-btn" class="px-4 py-2 ${btnBg} text-white text-xs font-bold rounded-xl transition shadow-sm">
+                            ${confirmText}
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
+            document.getElementById('global-agent-confirm-btn').onclick = function() {
+                modal.classList.add('hidden');
+                if (typeof onConfirm === 'function') onConfirm();
+            };
         }
 
         // Auto dismiss live toast after 6 seconds

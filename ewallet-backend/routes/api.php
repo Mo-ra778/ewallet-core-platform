@@ -54,11 +54,12 @@ Route::middleware(['jwt.auth'])->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
     });
 
-    // In-App Notifications
+    // In-App & Push Notifications
     Route::prefix('notifications')->group(function () {
         Route::get('/', [NotificationController::class, 'index']);
         Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
         Route::post('/read-all', [NotificationController::class, 'markAllAsRead']);
+        Route::post('/register-token', [NotificationController::class, 'registerPushToken']);
         Route::post('/{id}/read', [NotificationController::class, 'markAsRead']);
     });
 

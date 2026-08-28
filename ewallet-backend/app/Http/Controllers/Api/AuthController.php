@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use App\Models\User;
 use App\Services\JwtService;
+use App\Services\PushNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -53,17 +54,17 @@ class AuthController extends Controller
             'password_hash' => Hash::make($request->input('password')),
             'balance' => 0.00,
             'status' => 'pending', // Pending admin approval
+            'push_token' => $request->input('push_token'),
         ]);
 
         // Send a welcome notification
-        Notification::create([
-            'recipient_id' => $user->id,
-            'recipient_type' => 'user',
-            'title' => 'مرحباً بك في المحفظة الإلكترونية',
-            'message' => 'تم استلام طلب تسجيلك بنجاح، وهو قيد المراجعة من قبل الإدارة.',
-            'type' => 'alert',
-            'is_read' => false,
-        ]);
+        PushNotificationService::sendToUser(
+            user: $user,
+            title: '👋 مرحباً بك في المحفظة الإلكترونية',
+            message: 'تم استلام طلب تسجيلك بنجاح، وهو قيد المراجعة من قبل الإدارة.',
+            data: ['type' => 'welcome', 'status' => 'pending'],
+            type: 'alert'
+        );
 
         return response()->json([
             'success' => true,
@@ -143,6 +144,10 @@ class AuthController extends Controller
             ], 403);
         }
 
+        if ($request->filled('push_token')) {
+            $user->update(['push_token' => trim($request->input('push_token'))]);
+        }
+
         $token = $this->jwtService->generateToken($user, 'user');
 
         return response()->json([
@@ -158,6 +163,7 @@ class AuthController extends Controller
                     'email' => $user->email,
                     'status' => $user->status,
                     'balance' => (float) $user->balance,
+                    'push_token' => $user->push_token,
                 ],
             ],
         ]);

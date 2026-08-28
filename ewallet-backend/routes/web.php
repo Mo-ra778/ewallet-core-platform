@@ -24,6 +24,7 @@ Route::prefix('agent')->group(function () {
     Route::post('/logout', [AgentWebController::class, 'logout'])->name('agent.logout');
 
     Route::middleware(['role.check:agent'])->group(function () {
+        Route::get('/lookup-user', [AgentWebController::class, 'lookupUser'])->name('agent.lookup.user');
         Route::get('/dashboard', [AgentWebController::class, 'dashboard'])->name('agent.dashboard');
         Route::get('/deposit', [AgentWebController::class, 'depositForm'])->name('agent.deposit.form');
         Route::post('/deposit', [AgentWebController::class, 'deposit'])->name('agent.deposit');

@@ -101,4 +101,40 @@ class NotificationController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Register or update Expo/FCM Push Token for the authenticated user
+     */
+    public function registerPushToken(Request $request): JsonResponse
+    {
+        $request->validate([
+            'push_token' => 'required|string|max:255',
+        ], [
+            'push_token.required' => 'رمز توكن الإشعارات (push_token) مطلوب.',
+        ]);
+
+        /** @var User $user */
+        $user = $request->user();
+
+        if (!$user instanceof User) {
+            return response()->json([
+                'success' => false,
+                'message' => 'المستخدم غير صالح.',
+                'data' => null,
+            ], 403);
+        }
+
+        $pushToken = trim($request->input('push_token'));
+        $user->update(['push_token' => $pushToken]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تسجيل وتحديث رمز الإشعارات السحابية بنجاح.',
+            'data' => [
+                'user_id' => $user->id,
+                'push_token' => $pushToken,
+                'updated_at' => now()->toIso8601String(),
+            ],
+        ]);
+    }
 }

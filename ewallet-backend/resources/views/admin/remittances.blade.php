@@ -186,10 +186,9 @@
                         <!-- Actions -->
                         <td class="py-4 px-6 text-center">
                             @if($rem->status === 'pending')
-                                <form action="{{ route('admin.remittance.cancel', $rem->id) }}" method="POST" class="inline"
-                                      onsubmit="return confirm('هل أنت متأكد من إلغاء هذه الحوالة واسترجاع مبلغها لحساب المرسل؟');">
+                                <form id="cancel-rem-form-{{ $rem->id }}" action="{{ route('admin.remittance.cancel', $rem->id) }}" method="POST" class="inline">
                                     @csrf
-                                    <button type="submit" class="px-2.5 py-1 rounded-lg text-[10px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 transition border border-rose-200/60" title="إلغاء واسترجاع للمرسل">
+                                    <button type="button" onclick="showConfirmDialog({ title: 'إلغاء الحوالة النقدية', message: 'هل أنت متأكد من إلغاء هذه الحوالة ({{ $rem->remittance_code }}) واسترجاع مبلغها لحساب المرسل؟', confirmText: 'نعم، إلغاء واسترجاع', confirmType: 'danger', onConfirm: () => document.getElementById('cancel-rem-form-{{ $rem->id }}').submit() });" class="px-2.5 py-1 rounded-lg text-[10px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 transition border border-rose-200/60" title="إلغاء واسترجاع للمرسل">
                                         إلغاء واسترجاع
                                     </button>
                                 </form>

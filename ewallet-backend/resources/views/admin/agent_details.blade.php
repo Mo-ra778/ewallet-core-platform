@@ -145,7 +145,7 @@
                            class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 focus:bg-white focus:outline-none transition">
                 </div>
 
-                <button type="submit" onclick="return confirm('تأكيد تنفيذ عملية التغذية/التسوية على عهدة الوكيل؟')"
+                <button type="button" onclick="const f = this.closest('form'); showConfirmDialog({ title: 'تأكيد تغذية عهدة الوكيل', message: 'هل أنت متأكد من تنفيذ عملية التغذية/التسوية على عهدة هذا الوكيل؟', confirmText: 'نعم، تنفيذ التغذية', confirmType: 'primary', onConfirm: () => f.submit() });"
                         class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition shadow-xs flex items-center justify-center gap-1.5">
                     <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
                     <span>تنفيذ التغذية الفورية للعهدة</span>

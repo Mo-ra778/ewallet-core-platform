@@ -8,6 +8,7 @@ use App\Models\Agent;
 use App\Models\Notification;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -172,14 +173,13 @@ class AdminWebController extends Controller
             'pending' => 'إعادة للمراجعة',
         ];
 
-        Notification::create([
-            'recipient_id' => $user->id,
-            'recipient_type' => 'user',
-            'title' => 'تحديث حالة الحساب',
-            'message' => "تم تغيير حالة حسابك إلى (" . ($statusLabels[$newStatus] ?? $newStatus) . ")." . ($reason ? " السبب: {$reason}" : ''),
-            'type' => 'alert',
-            'is_read' => false,
-        ]);
+        PushNotificationService::sendToUser(
+            user: $user,
+            title: '🔔 تحديث حالة الحساب',
+            message: "تم تغيير حالة حسابك إلى (" . ($statusLabels[$newStatus] ?? $newStatus) . ")." . ($reason ? " السبب: {$reason}" : ''),
+            data: ['type' => 'status_change', 'status' => $newStatus],
+            type: 'alert'
+        );
 
         return back()->with('success', "تم تحديث حالة حساب العميل {$user->full_name} إلى {$newStatus} بنجاح.");
     }
@@ -398,14 +398,24 @@ class AdminWebController extends Controller
                 'description' => "{$actionText} ({$currency}): {$reason}",
             ]);
 
-            Notification::create([
-                'recipient_id' => $entity->id,
-                'recipient_type' => $targetType,
-                'title' => $actionText,
-                'message' => "تم تنفيذ عملية {$actionText} بمبلغ " . number_format($amount, 2) . " {$currency} على حسابك. السبب: {$reason}",
-                'type' => 'transaction',
-                'is_read' => false,
-            ]);
+            if ($targetType === 'user') {
+                PushNotificationService::sendToUser(
+                    user: $entity,
+                    title: '💳 ' . $actionText,
+                    message: "تم تنفيذ عملية {$actionText} بمبلغ " . number_format($amount, 2) . " {$currency} على حسابك. السبب: {$reason}",
+                    data: ['type' => 'adjustment', 'amount' => $amount, 'currency' => $currency],
+                    type: 'transaction'
+                );
+            } else {
+                Notification::create([
+                    'recipient_id' => $entity->id,
+                    'recipient_type' => $targetType,
+                    'title' => $actionText,
+                    'message' => "تم تنفيذ عملية {$actionText} بمبلغ " . number_format($amount, 2) . " {$currency} على حسابك. السبب: {$reason}",
+                    'type' => 'transaction',
+                    'is_read' => false,
+                ]);
+            }
         });
 
         $receipt = [
@@ -497,14 +507,13 @@ class AdminWebController extends Controller
         if ($target === 'all_users' || empty($target)) {
             $users = User::where('status', 'active')->get();
             foreach ($users as $u) {
-                Notification::create([
-                    'recipient_id' => $u->id,
-                    'recipient_type' => 'user',
-                    'title' => $title,
-                    'message' => $message,
-                    'type' => $type,
-                    'is_read' => false,
-                ]);
+                PushNotificationService::sendToUser(
+                    user: $u,
+                    title: $title,
+                    message: $message,
+                    data: ['type' => 'broadcast'],
+                    type: $type
+                );
             }
             $msg = 'تم بث الإشعار بنجاح لكافة المستخدمين النشطين (' . $users->count() . ' مستخدم).';
         } elseif ($target === 'all_agents') {
@@ -523,14 +532,13 @@ class AdminWebController extends Controller
         } elseif (str_starts_with($target, 'user:')) {
             $userId = substr($target, 5);
             $user = User::findOrFail($userId);
-            Notification::create([
-                'recipient_id' => $user->id,
-                'recipient_type' => 'user',
-                'title' => $title,
-                'message' => $message,
-                'type' => $type,
-                'is_read' => false,
-            ]);
+            PushNotificationService::sendToUser(
+                user: $user,
+                title: $title,
+                message: $message,
+                data: ['type' => 'direct_message'],
+                type: $type
+            );
             $msg = "تم إرسال الإشعار للعميل {$user->full_name} بنجاح.";
         } elseif (str_starts_with($target, 'agent:')) {
             $agentId = substr($target, 6);
@@ -750,14 +758,13 @@ class AdminWebController extends Controller
                         'description' => "إلغاء واسترجاع حوالة نقدية إدارياً (رقم: {$remittance->remittance_code}) للمستلم {$remittance->recipient_name}",
                     ]);
 
-                    Notification::create([
-                        'recipient_id' => $user->id,
-                        'recipient_type' => 'user',
-                        'title' => 'إلغاء حوالة نقدية واسترجاع المبلغ',
-                        'message' => "تم إلغاء الحوالة رقم {$remittance->remittance_code} من قبل الإدارة واسترجاع مبلغ " . number_format($remittance->amount, 2) . " {$remittance->currency} إلى حسابك.",
-                        'type' => 'transaction',
-                        'is_read' => false,
-                    ]);
+                    PushNotificationService::sendToUser(
+                        user: $user,
+                        title: '↩️ إلغاء حوالة نقدية واسترجاع المبلغ',
+                        message: "تم إلغاء الحوالة رقم {$remittance->remittance_code} من قبل الإدارة واسترجاع مبلغ " . number_format($remittance->amount, 2) . " {$remittance->currency} إلى حسابك.",
+                        data: ['type' => 'remittance_cancelled_by_admin', 'remittance_code' => $remittance->remittance_code],
+                        type: 'transaction'
+                    );
                 }
             }
         });
