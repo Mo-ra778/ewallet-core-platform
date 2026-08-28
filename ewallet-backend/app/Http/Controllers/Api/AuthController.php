@@ -88,28 +88,25 @@ class AuthController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'phone' => 'required|string',
-            'password' => 'required|string',
-        ], [
-            'phone.required' => 'رقم الهاتف مطلوب.',
-            'password.required' => 'كلمة المرور مطلوبة.',
-        ]);
+        $identifier = trim((string) ($request->input('phone') ?? $request->input('email') ?? $request->input('login') ?? $request->input('identifier') ?? ''));
+        $password = (string) $request->input('password');
 
-        if ($validator->fails()) {
+        if (empty($identifier) || empty($password)) {
             return response()->json([
                 'success' => false,
-                'message' => $validator->errors()->first(),
-                'data' => $validator->errors(),
+                'message' => 'يرجى إدخال رقم الهاتف أو البريد الإلكتروني وكلمة المرور.',
+                'data' => null,
             ], 422);
         }
 
-        $user = User::where('phone', $request->input('phone'))->first();
+        $user = User::where('phone', $identifier)
+            ->orWhere('email', $identifier)
+            ->first();
 
-        if (!$user || !Hash::check($request->input('password'), $user->password_hash)) {
+        if (!$user || !Hash::check($password, $user->password_hash)) {
             return response()->json([
                 'success' => false,
-                'message' => 'بيانات الدخول غير صحيحة، يرجى التأكد من رقم الهاتف وكلمة المرور.',
+                'message' => 'بيانات الدخول غير صحيحة، يرجى التأكد من صحة رقم الهاتف أو البريد الإلكتروني وكلمة المرور.',
                 'data' => null,
             ], 401);
         }
