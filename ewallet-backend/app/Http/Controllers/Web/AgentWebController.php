@@ -407,44 +407,50 @@ class AgentWebController extends Controller
         // Complete Withdrawal inside DB::transaction
         $tx = null;
         DB::transaction(function () use ($agent, $user, $amount, $fee, $agentCommission, $totalDebit, $currency, &$tx) {
+            $agentModel = Agent::where('id', $agent->id)->lockForUpdate()->firstOrFail();
+            $userModel = User::where('id', $user->id)->lockForUpdate()->firstOrFail();
+
             // Deduct total (amount + fee) from user
-            $user->decrementCurrency($currency, $totalDebit);
+            $userModel->decrementCurrency($currency, $totalDebit);
 
             // Credit agent with cash replenishment + earned commission share!
-            $agent->incrementCurrency($currency, $amount + $agentCommission);
+            $totalAgentCredit = $amount + $agentCommission;
+            $agentModel->incrementCurrency($currency, $totalAgentCredit);
 
             $tx = Transaction::create([
-                'user_id' => $user->id,
-                'agent_id' => $agent->id,
+                'user_id' => $userModel->id,
+                'agent_id' => $agentModel->id,
                 'type' => 'withdraw',
                 'amount' => $amount,
                 'fee' => $fee,
                 'commission' => $agentCommission,
                 'currency' => $currency,
                 'status' => 'completed',
-                'description' => "سحب نقدي ({$currency}) عبر الوكيل: {$agent->full_name}" . ($fee > 0 ? " (رسوم: {$fee} {$currency} - عمولة الوكيل: {$agentCommission} {$currency})" : ''),
+                'description' => "سحب نقدي ({$currency}) عبر الوكيل: {$agentModel->full_name}" . ($fee > 0 ? " (رسوم: {$fee} {$currency} - عمولة الوكيل: {$agentCommission} {$currency})" : ''),
             ]);
 
-            // Notify User
+            // 1. Notify User (Customer)
             PushNotificationService::sendToUser(
-                user: $user,
+                user: $userModel,
                 title: '🏧 سحب نقدي مؤكد',
-                message: "تم تسليم مبلغ " . number_format($amount, 2) . " {$currency} نقداً من حسابك عبر الوكيل {$agent->full_name}" . ($fee > 0 ? " (رسوم الخدمة: " . number_format($fee, 2) . " {$currency})" : '') . ".",
+                message: "تم تسليم مبلغ " . number_format($amount, 2) . " {$currency} نقداً من حسابك عبر الوكيل {$agentModel->full_name}" . ($fee > 0 ? " (رسوم الخدمة: " . number_format($fee, 2) . " {$currency})" : '') . ".",
                 data: ['type' => 'withdraw', 'amount' => $amount, 'currency' => $currency],
                 type: 'transaction'
             );
 
-            // Notify Agent of commission earned
-            if ($agentCommission > 0) {
-                Notification::create([
-                    'recipient_id' => $agent->id,
-                    'recipient_type' => 'agent',
-                    'title' => 'أرباح عمولة سحب نقدي',
-                    'message' => "تمت إضافة عمولة أرباح بمبلغ " . number_format($agentCommission, 2) . " {$currency} إلى عهدتك مقابل تنفيذ عملية سحب للعميل {$user->full_name}.",
-                    'type' => 'transaction',
-                    'is_read' => false,
-                ]);
-            }
+            // 2. Notify Agent with Full Breakdown: Cash Reimbursement + Commission
+            $formattedAmount = number_format($amount, 2);
+            $formattedCommission = number_format($agentCommission, 2);
+            $formattedTotal = number_format($totalAgentCredit, 2);
+
+            Notification::create([
+                'recipient_id' => $agentModel->id,
+                'recipient_type' => 'agent',
+                'title' => '💵 إيداع تعويض نقدية وعمولة السحب',
+                'message' => "تمت إضافة إجمالي {$formattedTotal} {$currency} إلى عهدتك الإلكترونية بنجاح (مبلغ السحب المسترد: {$formattedAmount} {$currency}" . ($agentCommission > 0 ? " + عمولة أرباحك: {$formattedCommission} {$currency}" : '') . ") مقابل صرف نقدية للعميل {$userModel->full_name}.",
+                'type' => 'transaction',
+                'is_read' => false,
+            ]);
         });
 
         $receipt = [
