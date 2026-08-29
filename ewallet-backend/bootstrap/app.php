@@ -8,7 +8,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 
-return Application::configure(basePath: dirname(__DIR__))
+$app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
@@ -28,3 +28,17 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
     })->create();
+
+// Automatically redirect storage path on Serverless (Vercel)
+if (isset($_SERVER['VERCEL']) || isset($_ENV['VERCEL']) || (function_exists('posix_getpwuid') && !is_writable(storage_path()))) {
+    $serverlessStorage = '/tmp/storage';
+    if (!is_dir($serverlessStorage)) {
+        @mkdir("{$serverlessStorage}/framework/views", 0777, true);
+        @mkdir("{$serverlessStorage}/framework/sessions", 0777, true);
+        @mkdir("{$serverlessStorage}/framework/cache", 0777, true);
+        @mkdir("{$serverlessStorage}/logs", 0777, true);
+    }
+    $app->useStoragePath($serverlessStorage);
+}
+
+return $app;

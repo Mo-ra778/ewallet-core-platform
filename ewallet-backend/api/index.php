@@ -23,5 +23,13 @@ if (isset($_SERVER['REQUEST_URI']) && str_starts_with($_SERVER['REQUEST_URI'], '
     $_SERVER['REQUEST_URI'] = substr($_SERVER['REQUEST_URI'], strlen('/api/index.php')) ?: '/';
 }
 
-// Forward to Laravel public/index.php
-require __DIR__ . '/../public/index.php';
+// Register the Composer autoloader...
+require __DIR__ . '/../vendor/autoload.php';
+
+// Bootstrap Laravel and set writable serverless storage path...
+/** @var \Illuminate\Foundation\Application $app */
+$app = require_once __DIR__ . '/../bootstrap/app.php';
+
+$app->useStoragePath('/tmp/storage');
+
+$app->handleRequest(\Illuminate\Http\Request::capture());
