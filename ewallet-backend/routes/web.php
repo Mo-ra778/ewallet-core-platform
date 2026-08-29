@@ -15,6 +15,17 @@ Route::get('/', function () {
     return redirect()->route('admin.login.form');
 });
 
+Route::any('/debug-route', function (\Illuminate\Http\Request $request) {
+    return response()->json([
+        'path' => $request->path(),
+        'uri' => $request->getRequestUri(),
+        'method' => $request->method(),
+        'headers' => $request->headers->all(),
+        'server_request_uri' => $_SERVER['REQUEST_URI'] ?? null,
+        'server_script_name' => $_SERVER['SCRIPT_NAME'] ?? null,
+    ]);
+});
+
 // One-click Cloud Database Setup (Migrations & Seeds on Neon)
 Route::get('/setup-cloud-db', function () {
     try {
