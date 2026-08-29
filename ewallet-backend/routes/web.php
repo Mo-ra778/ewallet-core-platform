@@ -15,62 +15,6 @@ Route::get('/', function () {
     return redirect()->route('admin.login.form');
 });
 
-Route::any('/debug-adjust-test', function (\Illuminate\Http\Request $request) {
-    try {
-        $user = \App\Models\User::where('phone', '771577165')->first() ?? \App\Models\User::first();
-        $admin = \App\Models\Admin::first();
-        
-        if (!$user) {
-            return response()->json(['error' => 'No users found in database!']);
-        }
-        
-        $steps = [];
-        $steps['user_found'] = ['id' => $user->id, 'name' => $user->full_name, 'phone' => $user->phone];
-        $steps['admin_found'] = $admin ? ['id' => $admin->id, 'username' => $admin->username] : 'NO_ADMIN';
-        
-        // Test Increment
-        $user->incrementCurrency('SAR', 10);
-        $steps['increment_sar'] = 'SUCCESS';
-        
-        // Test Transaction creation
-        $tx = \App\Models\Transaction::create([
-            'user_id' => $user->id,
-            'admin_id' => $admin ? $admin->id : null,
-            'type' => 'deposit',
-            'amount' => 10,
-            'currency' => 'SAR',
-            'status' => 'completed',
-            'description' => 'Debug test deposit',
-        ]);
-        $steps['transaction_created'] = ['id' => $tx->id, 'amount' => $tx->amount];
-        
-        // Test Notification
-        $notif = \App\Models\Notification::create([
-            'recipient_id' => $user->id,
-            'recipient_type' => 'user',
-            'title' => 'Test Notification',
-            'message' => 'Debug test message',
-            'type' => 'transaction',
-            'is_read' => false,
-        ]);
-        $steps['notification_created'] = ['id' => $notif->id];
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'All database operations succeeded cleanly on Neon PostgreSQL!',
-            'steps' => $steps,
-        ]);
-    } catch (\Throwable $e) {
-        return response()->json([
-            'success' => false,
-            'error_class' => get_class($e),
-            'error_message' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-            'trace' => $e->getTraceAsString(),
-        ], 500);
-    }
-});
 
 
 // One-click Cloud Database Setup (Migrations & Seeds on Neon)
