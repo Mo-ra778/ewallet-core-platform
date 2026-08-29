@@ -335,7 +335,6 @@ class AgentWebController extends Controller
             'agent_commission' => $feeInfo['agent_commission'],
             'total_debit' => $totalRequired,
             'currency' => $currency,
-            'demo_otp' => $otp, // Shown for test convenience
         ]);
     }
 
@@ -383,7 +382,6 @@ class AgentWebController extends Controller
                 'agent_commission' => $comm,
                 'total_debit' => $activeRequest['total_debit'] ?? ($reqAmount + $fee),
                 'currency' => $reqCurrency,
-                'demo_otp' => $expectedOtp,
             ])->withErrors(['otp' => 'رمز التحقق (OTP) غير صحيح، يرجى التأكد وإعادة المحاولة.']);
         }
 

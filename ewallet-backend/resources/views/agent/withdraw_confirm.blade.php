@@ -58,12 +58,15 @@
             @endif
         </div>
 
-        @if(isset($demo_otp))
-        <div class="bg-slate-50 border border-slate-200/80 text-slate-700 rounded-xl p-3 text-xs flex items-center justify-between">
-            <span class="text-[11px] text-slate-500">تم إرسال كود الـ OTP إلى هاتف العميل.</span>
-            <span class="num-font font-bold text-xs bg-white text-slate-900 px-3 py-1 rounded-lg border border-slate-200 shadow-xs">OTP: {{ $demo_otp }}</span>
+        <div class="bg-amber-50/80 border border-amber-200/80 text-amber-900 rounded-xl p-3.5 text-xs flex items-center gap-3 shadow-xs">
+            <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
+            </div>
+            <div>
+                <span class="font-bold block text-slate-900 text-xs">تم إرسال رمز التحقق الأمني (OTP) إلى هاتف العميل</span>
+                <span class="text-[11px] text-slate-500">لأسباب أمنية، لا يظهر الرمز للوكيل. يرجى طلب الرمز من العميل بعد تسليمه النقدية لإتمام العملية.</span>
+            </div>
         </div>
-        @endif
 
         <form action="{{ route('agent.withdraw.confirm') }}" method="POST" class="space-y-5">
             @csrf
