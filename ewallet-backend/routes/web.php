@@ -15,6 +15,29 @@ Route::get('/', function () {
     return redirect()->route('admin.login.form');
 });
 
+// One-click Cloud Database Setup (Migrations & Seeds on Neon)
+Route::get('/setup-cloud-db', function () {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        $migrateOutput = \Illuminate\Support\Facades\Artisan::output();
+        
+        \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
+        $seedOutput = \Illuminate\Support\Facades\Artisan::output();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Cloud Database Migrated & Seeded Successfully on Neon PostgreSQL!',
+            'migrate_output' => $migrateOutput,
+            'seed_output' => $seedOutput,
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+});
+
 // ==========================================
 // Agent Portal Web Routes
 // ==========================================
