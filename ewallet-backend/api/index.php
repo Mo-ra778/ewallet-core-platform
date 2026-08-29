@@ -15,7 +15,10 @@ foreach ($dirs as $dir) {
     }
 }
 
-// Normalize Vercel serverless request URI
+// Normalize SCRIPT_NAME and REQUEST_URI for Laravel routing on Vercel
+$_SERVER['SCRIPT_NAME'] = '/index.php';
+$_SERVER['SCRIPT_FILENAME'] = __DIR__ . '/../public/index.php';
+
 if (isset($_SERVER['REQUEST_URI']) && str_starts_with($_SERVER['REQUEST_URI'], '/api/index.php')) {
     $_SERVER['REQUEST_URI'] = substr($_SERVER['REQUEST_URI'], strlen('/api/index.php')) ?: '/';
 }
