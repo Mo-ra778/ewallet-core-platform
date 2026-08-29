@@ -347,11 +347,21 @@ class AdminWebController extends Controller
      */
     public function adjustBalance(Request $request)
     {
+        $rawAmount = $request->input('amount');
+        if (is_string($rawAmount)) {
+            $normalizedAmount = str_replace(
+                ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩', '۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹', ','],
+                ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ''],
+                $rawAmount
+            );
+            $request->merge(['amount' => $normalizedAmount]);
+        }
+
         $request->validate([
             'target_type' => 'required|in:user,agent',
             'target_id' => 'required|string',
             'operation' => 'required|in:credit,debit',
-            'amount' => 'required|numeric|min:1',
+            'amount' => 'required|numeric|min:0.01',
             'currency' => 'required|string|in:SAR,YER,USD,EUR',
             'reason' => 'required|string|max:255',
         ], [
