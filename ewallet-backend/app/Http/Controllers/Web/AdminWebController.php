@@ -370,72 +370,87 @@ class AdminWebController extends Controller
         $admin = Admin::where('id', session('admin_id'))->first() ?? Admin::first();
         $adminId = $admin ? $admin->id : null;
 
-        $entity = $targetType === 'user' ? User::findOrFail($targetId) : Agent::findOrFail($targetId);
+        try {
+            $entity = $targetType === 'user' 
+                ? User::where('id', $targetId)->first() 
+                : Agent::where('id', $targetId)->first();
 
-        if ($operation === 'debit' && !$entity->hasSufficientBalance($amount, $currency)) {
-            $curBal = number_format($entity->getCurrencyBalance($currency), 2);
-            return back()->withErrors(['amount' => "الرصيد الحالي بعملة {$currency} ({$curBal}) غير كافٍ لإجراء الخصم."])->withInput();
-        }
-
-        $tx = null;
-        DB::transaction(function () use ($entity, $targetType, $operation, $amount, $currency, $reason, $adminId, &$tx) {
-            if ($operation === 'credit') {
-                $entity->incrementCurrency($currency, $amount);
-                $txType = 'deposit';
-                $actionText = 'إيداع/تغذية إدارية';
-            } else {
-                $entity->decrementCurrency($currency, $amount);
-                $txType = 'withdraw';
-                $actionText = 'خصم إداري';
+            if (!$entity) {
+                return back()->withErrors(['target_id' => 'الحساب المستهدف غير موجود أو غير نشط في النظام.'])->withInput();
             }
 
-            $tx = Transaction::create([
-                'user_id' => $targetType === 'user' ? $entity->id : null,
-                'agent_id' => $targetType === 'agent' ? $entity->id : null,
-                'admin_id' => $adminId,
-                'type' => $txType,
+            if ($operation === 'debit' && !$entity->hasSufficientBalance($amount, $currency)) {
+                $curBal = number_format($entity->getCurrencyBalance($currency), 2);
+                return back()->withErrors(['amount' => "الرصيد الحالي بعملة {$currency} ({$curBal}) غير كافٍ لإجراء الخصم."])->withInput();
+            }
+
+            $tx = null;
+            DB::transaction(function () use ($entity, $targetType, $operation, $amount, $currency, $reason, $adminId, &$tx) {
+                if ($operation === 'credit') {
+                    $entity->incrementCurrency($currency, $amount);
+                    $txType = 'deposit';
+                    $actionText = 'إيداع/تغذية إدارية';
+                } else {
+                    $entity->decrementCurrency($currency, $amount);
+                    $txType = 'withdraw';
+                    $actionText = 'خصم إداري';
+                }
+
+                $tx = Transaction::create([
+                    'user_id' => $targetType === 'user' ? $entity->id : null,
+                    'agent_id' => $targetType === 'agent' ? $entity->id : null,
+                    'admin_id' => $adminId,
+                    'type' => $txType,
+                    'amount' => $amount,
+                    'currency' => $currency,
+                    'status' => 'completed',
+                    'description' => "{$actionText} ({$currency}): {$reason}",
+                ]);
+
+                try {
+                    if ($targetType === 'user') {
+                        PushNotificationService::sendToUser(
+                            user: $entity,
+                            title: '💳 ' . $actionText,
+                            message: "تم تنفيذ عملية {$actionText} بمبلغ " . number_format($amount, 2) . " {$currency} على حسابك. السبب: {$reason}",
+                            data: ['type' => 'adjustment', 'amount' => $amount, 'currency' => $currency],
+                            type: 'transaction'
+                        );
+                    } else {
+                        Notification::create([
+                            'recipient_id' => $entity->id,
+                            'recipient_type' => $targetType,
+                            'title' => $actionText,
+                            'message' => "تم تنفيذ عملية {$actionText} بمبلغ " . number_format($amount, 2) . " {$currency} على حسابك. السبب: {$reason}",
+                            'type' => 'transaction',
+                            'is_read' => false,
+                        ]);
+                    }
+                } catch (\Throwable $notifEx) {
+                    Log::warning("Adjustment Notification skipped: " . $notifEx->getMessage());
+                }
+            });
+
+            $receipt = [
+                'type' => 'adjustment',
+                'title' => $operation === 'credit' ? 'سند تسوية وتغذية رصيد إدارية (+)' : 'سند تسوية وخصم إداري (-)',
                 'amount' => $amount,
                 'currency' => $currency,
-                'status' => 'completed',
-                'description' => "{$actionText} ({$currency}): {$reason}",
-            ]);
+                'target_name' => $entity->full_name,
+                'target_type' => $targetType === 'user' ? 'مشترك (عميل)' : 'وكيل معتمد',
+                'operation' => $operation === 'credit' ? 'تغذية رصيد (+)' : 'خصم مباشر (-)',
+                'reason' => $reason,
+                'reference' => strtoupper(substr($tx->id ?? uniqid(), 0, 13)),
+                'date' => now()->format('Y-m-d H:i:s'),
+            ];
 
-            if ($targetType === 'user') {
-                PushNotificationService::sendToUser(
-                    user: $entity,
-                    title: '💳 ' . $actionText,
-                    message: "تم تنفيذ عملية {$actionText} بمبلغ " . number_format($amount, 2) . " {$currency} على حسابك. السبب: {$reason}",
-                    data: ['type' => 'adjustment', 'amount' => $amount, 'currency' => $currency],
-                    type: 'transaction'
-                );
-            } else {
-                Notification::create([
-                    'recipient_id' => $entity->id,
-                    'recipient_type' => $targetType,
-                    'title' => $actionText,
-                    'message' => "تم تنفيذ عملية {$actionText} بمبلغ " . number_format($amount, 2) . " {$currency} على حسابك. السبب: {$reason}",
-                    'type' => 'transaction',
-                    'is_read' => false,
-                ]);
-            }
-        });
-
-        $receipt = [
-            'type' => 'adjustment',
-            'title' => $operation === 'credit' ? 'سند تسوية وتغذية رصيد إدارية (+)' : 'سند تسوية وخصم إداري (-)',
-            'amount' => $amount,
-            'currency' => $currency,
-            'target_name' => $entity->full_name,
-            'target_type' => $targetType === 'user' ? 'مشترك (عميل)' : 'وكيل معتمد',
-            'operation' => $operation === 'credit' ? 'تغذية رصيد (+)' : 'خصم مباشر (-)',
-            'reason' => $reason,
-            'reference' => strtoupper(substr($tx->id ?? uniqid(), 0, 13)),
-            'date' => now()->format('Y-m-d H:i:s'),
-        ];
-
-        return back()
-            ->with('success', "تم تنفيذ التسوية بنجاح بمبلغ " . number_format($amount, 2) . " {$currency} على حساب {$entity->full_name}.")
-            ->with('receipt', $receipt);
+            return back()
+                ->with('success', "تم تنفيذ التسوية بنجاح بمبلغ " . number_format($amount, 2) . " {$currency} على حساب {$entity->full_name}.")
+                ->with('receipt', $receipt);
+        } catch (\Throwable $e) {
+            Log::error("Balance Adjustment Error: " . $e->getMessage(), ['exception' => $e]);
+            return back()->withErrors(['error' => 'تعذر تنفيذ التسوية: ' . $e->getMessage()])->withInput();
+        }
     }
 
     /**

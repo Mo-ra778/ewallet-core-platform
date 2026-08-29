@@ -205,46 +205,55 @@ class AgentWebController extends Controller
         }
 
         // Execute Deposit with DB::transaction
-        $tx = null;
-        DB::transaction(function () use ($agent, $user, $amount, $currency, $request, &$tx) {
-            $agent->decrementCurrency($currency, $amount);
-            $user->incrementCurrency($currency, $amount);
+        try {
+            $tx = null;
+            DB::transaction(function () use ($agent, $user, $amount, $currency, $request, &$tx) {
+                $agent->decrementCurrency($currency, $amount);
+                $user->incrementCurrency($currency, $amount);
 
-            $tx = Transaction::create([
-                'user_id' => $user->id,
-                'agent_id' => $agent->id,
+                $tx = Transaction::create([
+                    'user_id' => $user->id,
+                    'agent_id' => $agent->id,
+                    'type' => 'deposit',
+                    'amount' => $amount,
+                    'currency' => $currency,
+                    'status' => 'completed',
+                    'description' => "إيداع نقدي ({$currency}) عبر الوكيل: {$agent->full_name}" . ($request->input('notes') ? ' - ' . $request->input('notes') : ''),
+                ]);
+
+                try {
+                    PushNotificationService::sendToUser(
+                        user: $user,
+                        title: '💵 إيداع نقدي ناجح',
+                        message: "تم إيداع مبلغ " . number_format($amount, 2) . " {$currency} في محفظتك بنجاح عبر الوكيل {$agent->full_name}.",
+                        data: ['type' => 'deposit', 'amount' => $amount, 'currency' => $currency],
+                        type: 'transaction'
+                    );
+                } catch (\Throwable $notifEx) {
+                    Log::warning("Deposit push notification failed: " . $notifEx->getMessage());
+                }
+            });
+
+            $receipt = [
                 'type' => 'deposit',
+                'title' => 'سند إيداع نقدي فوري',
                 'amount' => $amount,
                 'currency' => $currency,
-                'status' => 'completed',
-                'description' => "إيداع نقدي ({$currency}) عبر الوكيل: {$agent->full_name}" . ($request->input('notes') ? ' - ' . $request->input('notes') : ''),
-            ]);
+                'user_name' => $user->full_name,
+                'user_phone' => $user->phone,
+                'agent_name' => $agent->full_name,
+                'reference' => strtoupper(substr($tx->id ?? uniqid(), 0, 13)),
+                'date' => now()->format('Y-m-d H:i:s'),
+                'notes' => $request->input('notes'),
+            ];
 
-            PushNotificationService::sendToUser(
-                user: $user,
-                title: '💵 إيداع نقدي ناجح',
-                message: "تم إيداع مبلغ " . number_format($amount, 2) . " {$currency} في محفظتك بنجاح عبر الوكيل {$agent->full_name}.",
-                data: ['type' => 'deposit', 'amount' => $amount, 'currency' => $currency],
-                type: 'transaction'
-            );
-        });
-
-        $receipt = [
-            'type' => 'deposit',
-            'title' => 'سند إيداع نقدي فوري',
-            'amount' => $amount,
-            'currency' => $currency,
-            'user_name' => $user->full_name,
-            'user_phone' => $user->phone,
-            'agent_name' => $agent->full_name,
-            'reference' => strtoupper(substr($tx->id ?? uniqid(), 0, 13)),
-            'date' => now()->format('Y-m-d H:i:s'),
-            'notes' => $request->input('notes'),
-        ];
-
-        return redirect()->route('agent.dashboard')
-            ->with('success', "تم إيداع مبلغ " . number_format($amount, 2) . " {$currency} بنجاح في حساب العميل {$user->full_name}.")
-            ->with('receipt', $receipt);
+            return redirect()->route('agent.dashboard')
+                ->with('success', "تم إيداع مبلغ " . number_format($amount, 2) . " {$currency} بنجاح في حساب العميل {$user->full_name}.")
+                ->with('receipt', $receipt);
+        } catch (\Throwable $e) {
+            Log::error("Agent Deposit Failed: " . $e->getMessage(), ['exception' => $e]);
+            return back()->withErrors(['error' => 'تعذر إتمام عملية الإيداع: ' . $e->getMessage()])->withInput();
+        }
     }
 
     /**
