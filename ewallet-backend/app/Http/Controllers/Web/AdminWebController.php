@@ -454,7 +454,7 @@ class AdminWebController extends Controller
                 'date' => now()->format('Y-m-d H:i:s'),
             ];
 
-            return back()
+            return redirect()->route('admin.balance.form')
                 ->with('success', "تم تنفيذ التسوية بنجاح بمبلغ " . number_format($amount, 2) . " {$currency} على حساب {$entity->full_name}.")
                 ->with('receipt', $receipt);
         } catch (\Throwable $e) {
