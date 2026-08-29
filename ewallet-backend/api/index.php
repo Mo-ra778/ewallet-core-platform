@@ -15,5 +15,10 @@ foreach ($dirs as $dir) {
     }
 }
 
+// Normalize Vercel serverless request URI
+if (isset($_SERVER['REQUEST_URI']) && str_starts_with($_SERVER['REQUEST_URI'], '/api/index.php')) {
+    $_SERVER['REQUEST_URI'] = substr($_SERVER['REQUEST_URI'], strlen('/api/index.php')) ?: '/';
+}
+
 // Forward to Laravel public/index.php
 require __DIR__ . '/../public/index.php';

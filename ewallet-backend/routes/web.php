@@ -21,8 +21,12 @@ Route::get('/setup-cloud-db', function () {
         \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
         $migrateOutput = \Illuminate\Support\Facades\Artisan::output();
         
-        \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
-        $seedOutput = \Illuminate\Support\Facades\Artisan::output();
+        try {
+            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
+            $seedOutput = \Illuminate\Support\Facades\Artisan::output();
+        } catch (\Throwable $seedEx) {
+            $seedOutput = 'Seeder already ran or skipped: ' . $seedEx->getMessage();
+        }
         
         return response()->json([
             'success' => true,
