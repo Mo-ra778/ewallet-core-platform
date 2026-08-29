@@ -114,6 +114,7 @@ Route::prefix('agent')->group(function () {
         Route::get('/deposit', [AgentWebController::class, 'depositForm'])->name('agent.deposit.form');
         Route::post('/deposit', [AgentWebController::class, 'deposit'])->name('agent.deposit');
         Route::get('/withdraw', [AgentWebController::class, 'withdrawForm'])->name('agent.withdraw.form');
+        Route::get('/withdraw/otp', fn() => redirect()->route('agent.withdraw.form'));
         Route::post('/withdraw/otp', [AgentWebController::class, 'requestWithdrawalOtp'])->name('agent.withdraw.otp');
         Route::post('/withdraw/confirm', [AgentWebController::class, 'confirmWithdrawal'])->name('agent.withdraw.confirm');
         Route::get('/remittance-payout', [AgentWebController::class, 'showRemittancePayout'])->name('agent.remittance.form');

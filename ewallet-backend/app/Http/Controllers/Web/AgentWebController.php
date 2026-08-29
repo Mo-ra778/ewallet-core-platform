@@ -339,7 +339,7 @@ class AgentWebController extends Controller
         $otpData = $this->otpService->verifyWithdrawalOtp($user->id, $agent->id, $otp);
 
         if (!$otpData) {
-            return back()->withErrors(['otp' => 'رمز التحقق غير صحيح أو انتهت صلاحيته (5 دقائق).'])->withInput();
+            return redirect()->route('agent.withdraw.form')->withErrors(['otp' => 'رمز التحقق غير صحيح أو انتهت صلاحيته (5 دقائق).'])->withInput();
         }
 
         $amount = (float) $otpData['amount'];

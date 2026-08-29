@@ -17,7 +17,7 @@
     "APP_ENV": "production",
     "APP_DEBUG": "true",
     "VIEW_COMPILED_PATH": "/tmp/views",
-    "CACHE_STORE": "array",
+    "CACHE_STORE": "database",
     "SESSION_DRIVER": "database",
     "LOG_CHANNEL": "stderr"
   }
