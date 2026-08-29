@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "framework": null,
+  "outputDirectory": "ewallet-backend/public",
+  "functions": {
+    "ewallet-backend/api/index.php": {
+      "runtime": "vercel-php@0.7.3"
+    }
+  },
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/ewallet-backend/api/index.php"
+    }
+  ]
+}
