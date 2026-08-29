@@ -345,7 +345,29 @@ class AgentWebController extends Controller
         $otpData = $this->otpService->verifyWithdrawalOtp($user->id, $agent->id, $otp);
 
         if (!$otpData) {
-            return redirect()->route('agent.withdraw.form')->withErrors(['otp' => 'رمز التحقق غير صحيح أو انتهت صلاحيته (5 دقائق).'])->withInput();
+            // Check if withdrawal request is still pending/active in cache
+            $activeRequest = $this->otpService->getWithdrawalRequest($user->id);
+
+            if ($activeRequest && ($activeRequest['agent_id'] ?? '') === $agent->id) {
+                $reqAmount = (float) $activeRequest['amount'];
+                $reqCurrency = strtoupper($activeRequest['currency'] ?? 'YER');
+                $feeInfo = \App\Services\FeeService::calculateWithdrawalFee($reqAmount);
+
+                return view('agent.withdraw_confirm', [
+                    'agent' => $agent,
+                    'user' => $user,
+                    'amount' => $reqAmount,
+                    'fee' => $feeInfo['fee'],
+                    'agent_commission' => $feeInfo['agent_commission'],
+                    'total_debit' => $reqAmount + $feeInfo['fee'],
+                    'currency' => $reqCurrency,
+                    'demo_otp' => $activeRequest['otp'] ?? null,
+                ])->withErrors(['otp' => 'رمز التحقق (OTP) غير صحيح، يرجى التأكد وإعادة المحاولة.']);
+            }
+
+            return redirect()->route('agent.withdraw.form')
+                ->withErrors(['phone' => 'انتهت صلاحية رمز التحقق (5 دقائق)، يرجى إنشاء طلب سحب جديد.'])
+                ->withInput();
         }
 
         $amount = (float) $otpData['amount'];
