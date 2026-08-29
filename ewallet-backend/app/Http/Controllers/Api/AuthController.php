@@ -136,16 +136,6 @@ class AuthController extends Controller
             ], 401);
         }
 
-        if ($user->status === 'pending') {
-            return response()->json([
-                'success' => false,
-                'message' => 'حسابك قيد المراجعة، ينتظر موافقة الإدارة.',
-                'data' => [
-                    'status' => 'pending',
-                ],
-            ], 403);
-        }
-
         if ($user->status === 'rejected') {
             return response()->json([
                 'success' => false,
@@ -172,9 +162,13 @@ class AuthController extends Controller
 
         $token = $this->jwtService->generateToken($user, 'user');
 
+        $message = $user->status === 'pending'
+            ? 'تم تسجيل الدخول بنجاح. حسابك قيد المراجعة والتحقق من قبل الإدارة.'
+            : 'تم تسجيل الدخول بنجاح.';
+
         return response()->json([
             'success' => true,
-            'message' => 'تم تسجيل الدخول بنجاح.',
+            'message' => $message,
             'data' => [
                 'token' => $token,
                 'token_type' => 'Bearer',
@@ -185,6 +179,7 @@ class AuthController extends Controller
                     'email' => $user->email,
                     'status' => $user->status,
                     'balance' => (float) $user->balance,
+                    'email_verified_at' => $user->email_verified_at?->toIso8601String(),
                     'push_token' => $user->push_token,
                 ],
             ],
@@ -314,14 +309,23 @@ class AuthController extends Controller
             Cache::forget("email_otp_by_email_" . md5(strtolower($user->email)));
         }
 
+        $token = $this->jwtService->generateToken($user, 'user');
+
         return response()->json([
             'success' => true,
-            'message' => 'تم تفعيل وتأكيد بريدك الإلكتروني بنجاح! حسابك بانتظار اعتماد الإدارة النهائي.',
+            'message' => 'تم تفعيل وتأكيد بريدك الإلكتروني بنجاح! تم تسجيل دخولك لمحفظتك بنجاح.',
             'data' => [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'email_verified_at' => $user->email_verified_at->toIso8601String(),
-                'status' => $user->status,
+                'token' => $token,
+                'token_type' => 'Bearer',
+                'user' => [
+                    'id' => $user->id,
+                    'full_name' => $user->full_name,
+                    'phone' => $user->phone,
+                    'email' => $user->email,
+                    'status' => $user->status,
+                    'balance' => (float) $user->balance,
+                    'email_verified_at' => $user->email_verified_at->toIso8601String(),
+                ],
             ],
         ]);
     }

@@ -20,7 +20,7 @@ class CheckUserStatus
             if ($user->status === 'pending') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'الحساب قيد المراجعة حالياً بانتظار موافقة الإدارة.',
+                    'message' => 'عذراً، لا يمكن تنفيذ العمليات المالية لأن حسابك قيد التحقق والمراجعة من قبل الإدارة. سيتم تفعيل كافة العمليات فور اعتماد الحساب.',
                     'data' => [
                         'status' => 'pending',
                     ],
