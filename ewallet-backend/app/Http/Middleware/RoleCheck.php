@@ -16,12 +16,16 @@ class RoleCheck
     public function handle(Request $request, Closure $next, string $guardType): Response
     {
         if ($guardType === 'admin') {
-            if (!session()->has('admin_id')) {
-                return redirect()->route('admin.login.form')->withErrors(['error' => 'يرجى تسجيل الدخول كمسؤول أولاً.']);
+            $adminId = session('admin_id');
+            if (!$adminId || !\App\Models\Admin::where('id', $adminId)->exists()) {
+                session()->forget(['admin_id', 'admin_username', 'admin_role']);
+                return redirect()->route('admin.login.form')->withErrors(['error' => 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول كمسؤول أولاً.']);
             }
         } elseif ($guardType === 'agent') {
-            if (!session()->has('agent_id')) {
-                return redirect()->route('agent.login.form')->withErrors(['error' => 'يرجى تسجيل الدخول كوكيل أولاً.']);
+            $agentId = session('agent_id');
+            if (!$agentId || !\App\Models\Agent::where('id', $agentId)->exists()) {
+                session()->forget(['agent_id', 'agent_name']);
+                return redirect()->route('agent.login.form')->withErrors(['error' => 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول كوكيل أولاً.']);
             }
         }
 

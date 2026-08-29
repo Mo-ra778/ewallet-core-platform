@@ -286,7 +286,8 @@ class AdminWebController extends Controller
                 'status' => 'active',
             ]);
 
-            $adminId = session('admin_id');
+            $admin = Admin::where('id', session('admin_id'))->first() ?? Admin::first();
+            $adminId = $admin ? $admin->id : null;
 
             // Record initial seed transactions for non-zero balances
             $initialCurrencies = [
@@ -366,7 +367,8 @@ class AdminWebController extends Controller
         $amount = (float) $request->input('amount');
         $currency = strtoupper($request->input('currency', 'YER'));
         $reason = $request->input('reason');
-        $adminId = session('admin_id');
+        $admin = Admin::where('id', session('admin_id'))->first() ?? Admin::first();
+        $adminId = $admin ? $admin->id : null;
 
         $entity = $targetType === 'user' ? User::findOrFail($targetId) : Agent::findOrFail($targetId);
 
