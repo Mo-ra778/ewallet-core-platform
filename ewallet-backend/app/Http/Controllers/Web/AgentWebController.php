@@ -312,6 +312,20 @@ class AgentWebController extends Controller
         // Generate OTP & Notify User
         $otp = $this->otpService->generateWithdrawalOtp($user, $agent->id, $amount, $currency);
 
+        session([
+            'pending_withdraw_' . $user->id => [
+                'user_id' => $user->id,
+                'agent_id' => $agent->id,
+                'amount' => $amount,
+                'currency' => $currency,
+                'otp' => $otp,
+                'fee' => $feeInfo['fee'],
+                'agent_commission' => $feeInfo['agent_commission'],
+                'total_debit' => $totalRequired,
+                'expires_at' => now()->addMinutes(5)->timestamp,
+            ]
+        ]);
+
         return view('agent.withdraw_confirm', [
             'agent' => $agent,
             'user' => $user,
@@ -339,39 +353,45 @@ class AgentWebController extends Controller
 
         $agent = Agent::findOrFail(session('agent_id'));
         $user = User::findOrFail($request->input('user_id'));
-        $otp = $request->input('otp');
+        $otp = trim($request->input('otp'));
 
-        // Verify OTP
-        $otpData = $this->otpService->verifyWithdrawalOtp($user->id, $agent->id, $otp);
+        // Check active request from session or cache
+        $sessionKey = 'pending_withdraw_' . $user->id;
+        $activeRequest = session($sessionKey) ?? $this->otpService->getWithdrawalRequest($user->id);
 
-        if (!$otpData) {
-            // Check if withdrawal request is still pending/active in cache
-            $activeRequest = $this->otpService->getWithdrawalRequest($user->id);
-
-            if ($activeRequest && ($activeRequest['agent_id'] ?? '') === $agent->id) {
-                $reqAmount = (float) $activeRequest['amount'];
-                $reqCurrency = strtoupper($activeRequest['currency'] ?? 'YER');
-                $feeInfo = \App\Services\FeeService::calculateWithdrawalFee($reqAmount);
-
-                return view('agent.withdraw_confirm', [
-                    'agent' => $agent,
-                    'user' => $user,
-                    'amount' => $reqAmount,
-                    'fee' => $feeInfo['fee'],
-                    'agent_commission' => $feeInfo['agent_commission'],
-                    'total_debit' => $reqAmount + $feeInfo['fee'],
-                    'currency' => $reqCurrency,
-                    'demo_otp' => $activeRequest['otp'] ?? null,
-                ])->withErrors(['otp' => 'رمز التحقق (OTP) غير صحيح، يرجى التأكد وإعادة المحاولة.']);
-            }
-
+        if (!$activeRequest || (isset($activeRequest['expires_at']) && now()->timestamp > $activeRequest['expires_at'])) {
+            session()->forget($sessionKey);
             return redirect()->route('agent.withdraw.form')
                 ->withErrors(['phone' => 'انتهت صلاحية رمز التحقق (5 دقائق)، يرجى إنشاء طلب سحب جديد.'])
                 ->withInput();
         }
 
-        $amount = (float) $otpData['amount'];
-        $currency = strtoupper($otpData['currency'] ?? 'YER');
+        // Verify OTP
+        $expectedOtp = trim((string) ($activeRequest['otp'] ?? ''));
+        if ($otp !== $expectedOtp) {
+            $reqAmount = (float) $activeRequest['amount'];
+            $reqCurrency = strtoupper($activeRequest['currency'] ?? 'YER');
+            $fee = $activeRequest['fee'] ?? \App\Services\FeeService::calculateWithdrawalFee($reqAmount)['fee'];
+            $comm = $activeRequest['agent_commission'] ?? \App\Services\FeeService::calculateWithdrawalFee($reqAmount)['agent_commission'];
+
+            return view('agent.withdraw_confirm', [
+                'agent' => $agent,
+                'user' => $user,
+                'amount' => $reqAmount,
+                'fee' => $fee,
+                'agent_commission' => $comm,
+                'total_debit' => $activeRequest['total_debit'] ?? ($reqAmount + $fee),
+                'currency' => $reqCurrency,
+                'demo_otp' => $expectedOtp,
+            ])->withErrors(['otp' => 'رمز التحقق (OTP) غير صحيح، يرجى التأكد وإعادة المحاولة.']);
+        }
+
+        // Consume OTP
+        Cache::forget("otp_withdraw_{$user->id}");
+        session()->forget($sessionKey);
+
+        $amount = (float) $activeRequest['amount'];
+        $currency = strtoupper($activeRequest['currency'] ?? 'YER');
 
         // Calculate fee and agent commission
         $feeInfo = \App\Services\FeeService::calculateWithdrawalFee($amount);
