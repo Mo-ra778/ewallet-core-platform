@@ -107,10 +107,14 @@ class User extends Authenticatable
             default => 'balance_yer',
         };
 
-        $this->decrement($column, $amount);
+        $new = round(max(0, (float) ($this->{$column} ?? 0) - $amount), 2);
+        $updates = [$column => $new];
         if ($column === 'balance_yer') {
-            $this->decrement('balance', $amount);
+            $updates['balance'] = $new;
+            $this->balance = $new;
         }
+        $this->{$column} = $new;
+        $this->update($updates);
     }
 
     /**
@@ -126,10 +130,14 @@ class User extends Authenticatable
             default => 'balance_yer',
         };
 
-        $this->increment($column, $amount);
+        $new = round((float) ($this->{$column} ?? 0) + $amount, 2);
+        $updates = [$column => $new];
         if ($column === 'balance_yer') {
-            $this->increment('balance', $amount);
+            $updates['balance'] = $new;
+            $this->balance = $new;
         }
+        $this->{$column} = $new;
+        $this->update($updates);
     }
 
     public function transactions(): HasMany

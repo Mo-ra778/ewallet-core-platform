@@ -209,24 +209,29 @@ class AgentWebController extends Controller
         try {
             $tx = null;
             DB::transaction(function () use ($agent, $user, $amount, $currency, $request, &$tx) {
-                $agent->decrementCurrency($currency, $amount);
-                $user->incrementCurrency($currency, $amount);
+                $agentModel = Agent::where('id', $agent->id)->lockForUpdate()->firstOrFail();
+                $userModel = User::where('id', $user->id)->lockForUpdate()->firstOrFail();
+
+                $agentModel->decrementCurrency($currency, $amount);
+                $userModel->incrementCurrency($currency, $amount);
 
                 $tx = Transaction::create([
-                    'user_id' => $user->id,
-                    'agent_id' => $agent->id,
+                    'user_id' => $userModel->id,
+                    'agent_id' => $agentModel->id,
                     'type' => 'deposit',
                     'amount' => $amount,
+                    'fee' => 0.00,
+                    'commission' => 0.00,
                     'currency' => $currency,
                     'status' => 'completed',
-                    'description' => "إيداع نقدي ({$currency}) عبر الوكيل: {$agent->full_name}" . ($request->input('notes') ? ' - ' . $request->input('notes') : ''),
+                    'description' => "إيداع نقدي ({$currency}) عبر الوكيل: {$agentModel->full_name}" . ($request->input('notes') ? ' - ' . $request->input('notes') : ''),
                 ]);
 
                 try {
                     PushNotificationService::sendToUser(
-                        user: $user,
+                        user: $userModel,
                         title: '💵 إيداع نقدي ناجح',
-                        message: "تم إيداع مبلغ " . number_format($amount, 2) . " {$currency} في محفظتك بنجاح عبر الوكيل {$agent->full_name}.",
+                        message: "تم إيداع مبلغ " . number_format($amount, 2) . " {$currency} في محفظتك بنجاح عبر الوكيل {$agentModel->full_name}.",
                         data: ['type' => 'deposit', 'amount' => $amount, 'currency' => $currency],
                         type: 'transaction'
                     );

@@ -396,7 +396,11 @@ class AdminWebController extends Controller
             }
 
             $tx = null;
-            DB::transaction(function () use ($entity, $targetType, $operation, $amount, $currency, $reason, $adminId, &$tx) {
+            DB::transaction(function () use ($targetId, $targetType, $operation, $amount, $currency, $reason, $adminId, &$tx, &$entity) {
+                $entity = $targetType === 'user' 
+                    ? User::where('id', $targetId)->lockForUpdate()->firstOrFail() 
+                    : Agent::where('id', $targetId)->lockForUpdate()->firstOrFail();
+
                 if ($operation === 'credit') {
                     $entity->incrementCurrency($currency, $amount);
                     $txType = 'deposit';
@@ -413,6 +417,8 @@ class AdminWebController extends Controller
                     'admin_id' => $adminId,
                     'type' => $txType,
                     'amount' => $amount,
+                    'fee' => 0.00,
+                    'commission' => 0.00,
                     'currency' => $currency,
                     'status' => 'completed',
                     'description' => "{$actionText} ({$currency}): {$reason}",
