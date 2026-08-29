@@ -19,67 +19,77 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Create Super Admin
-        $admin = Admin::create([
-            'username' => 'admin',
-            'password_hash' => Hash::make('admin123'),
-            'role' => 'super_admin',
-        ]);
+        // 1. Create Super Admin (idempotent)
+        $admin = Admin::firstOrCreate(
+            ['username' => 'admin'],
+            [
+                'password_hash' => Hash::make('admin123'),
+                'role' => 'super_admin',
+            ]
+        );
 
-        // 2. Create Test Agent with Multi-Currency Balances
-        $agent = Agent::create([
-            'full_name' => 'وكيل صنعاء الرئيسي - محمد الإدريسي',
-            'phone' => '777000111',
-            'password_hash' => Hash::make('agent123'),
-            'balance' => 2500000.00,
-            'balance_yer' => 2500000.00,
-            'balance_sar' => 15000.00,
-            'balance_usd' => 5000.00,
-            'balance_eur' => 2000.00,
-            'status' => 'active',
-        ]);
+        // 2. Create Test Agent with Multi-Currency Balances (idempotent)
+        $agent = Agent::firstOrCreate(
+            ['phone' => '777000111'],
+            [
+                'full_name' => 'وكيل صنعاء الرئيسي - محمد الإدريسي',
+                'password_hash' => Hash::make('agent123'),
+                'balance' => 2500000.00,
+                'balance_yer' => 2500000.00,
+                'balance_sar' => 15000.00,
+                'balance_usd' => 5000.00,
+                'balance_eur' => 2000.00,
+                'status' => 'active',
+            ]
+        );
 
-        // 3. Create Active User with Multi-Currency Balances
-        $user1 = User::create([
-            'full_name' => 'أحمد علي حسن',
-            'phone' => '777111222',
-            'email' => 'ahmed@example.com',
-            'password_hash' => Hash::make('user123'),
-            'balance' => 250000.00,
-            'balance_yer' => 250000.00,
-            'balance_sar' => 2500.00,
-            'balance_usd' => 800.00,
-            'balance_eur' => 300.00,
-            'status' => 'active',
-        ]);
+        // 3. Create Active User with Multi-Currency Balances (idempotent)
+        $user1 = User::firstOrCreate(
+            ['phone' => '777111222'],
+            [
+                'full_name' => 'أحمد علي حسن',
+                'email' => 'ahmed@example.com',
+                'password_hash' => Hash::make('user123'),
+                'balance' => 250000.00,
+                'balance_yer' => 250000.00,
+                'balance_sar' => 2500.00,
+                'balance_usd' => 800.00,
+                'balance_eur' => 300.00,
+                'status' => 'active',
+            ]
+        );
 
         // 4. Create Another Active User (for transfer testing)
-        $user2 = User::create([
-            'full_name' => 'خالد عبد الله المنصوري',
-            'phone' => '777222333',
-            'email' => 'khaled@example.com',
-            'password_hash' => Hash::make('user123'),
-            'balance' => 100000.00,
-            'balance_yer' => 100000.00,
-            'balance_sar' => 1200.00,
-            'balance_usd' => 450.00,
-            'balance_eur' => 0.00,
-            'status' => 'active',
-        ]);
+        $user2 = User::firstOrCreate(
+            ['phone' => '777222333'],
+            [
+                'full_name' => 'خالد عبد الله المنصوري',
+                'email' => 'khaled@example.com',
+                'password_hash' => Hash::make('user123'),
+                'balance' => 100000.00,
+                'balance_yer' => 100000.00,
+                'balance_sar' => 1200.00,
+                'balance_usd' => 450.00,
+                'balance_eur' => 0.00,
+                'status' => 'active',
+            ]
+        );
 
         // 5. Create Pending User (waiting for admin approval)
-        $userPending = User::create([
-            'full_name' => 'سالم محمد ناصر',
-            'phone' => '777333444',
-            'email' => 'salem@example.com',
-            'password_hash' => Hash::make('user123'),
-            'balance' => 0.00,
-            'balance_yer' => 0.00,
-            'balance_sar' => 0.00,
-            'balance_usd' => 0.00,
-            'balance_eur' => 0.00,
-            'status' => 'pending',
-        ]);
+        $userPending = User::firstOrCreate(
+            ['phone' => '777333444'],
+            [
+                'full_name' => 'سالم محمد ناصر',
+                'email' => 'salem@example.com',
+                'password_hash' => Hash::make('user123'),
+                'balance' => 0.00,
+                'balance_yer' => 0.00,
+                'balance_sar' => 0.00,
+                'balance_usd' => 0.00,
+                'balance_eur' => 0.00,
+                'status' => 'pending',
+            ]
+        );
 
         // 6. Seed Exchange Rates Matrix
         $rates = [
@@ -126,51 +136,55 @@ class DatabaseSeeder extends Seeder
             SystemSetting::set($s['key'], $s['value'], $s['group'], $s['label'], $s['description']);
         }
 
-        // 8. Initial Seed Transactions
-        Transaction::create([
-            'user_id' => $user1->id,
-            'agent_id' => $agent->id,
-            'type' => 'deposit',
-            'amount' => 250000.00,
-            'fee' => 0.00,
-            'commission' => 0.00,
-            'currency' => 'YER',
-            'status' => 'completed',
-            'description' => 'إيداع نقدي يمني عبر الوكيل',
-        ]);
+        // 8. Initial Seed Transactions (only if empty)
+        if (Transaction::count() === 0) {
+            Transaction::create([
+                'user_id' => $user1->id,
+                'agent_id' => $agent->id,
+                'type' => 'deposit',
+                'amount' => 250000.00,
+                'fee' => 0.00,
+                'commission' => 0.00,
+                'currency' => 'YER',
+                'status' => 'completed',
+                'description' => 'إيداع نقدي يمني عبر الوكيل',
+            ]);
 
-        Transaction::create([
-            'user_id' => $user1->id,
-            'agent_id' => $agent->id,
-            'type' => 'deposit',
-            'amount' => 2500.00,
-            'fee' => 0.00,
-            'commission' => 0.00,
-            'currency' => 'SAR',
-            'status' => 'completed',
-            'description' => 'إيداع نقدي بالريال السعودي',
-        ]);
+            Transaction::create([
+                'user_id' => $user1->id,
+                'agent_id' => $agent->id,
+                'type' => 'deposit',
+                'amount' => 2500.00,
+                'fee' => 0.00,
+                'commission' => 0.00,
+                'currency' => 'SAR',
+                'status' => 'completed',
+                'description' => 'إيداع نقدي بالريال السعودي',
+            ]);
 
-        Transaction::create([
-            'user_id' => $user1->id,
-            'agent_id' => $agent->id,
-            'type' => 'deposit',
-            'amount' => 800.00,
-            'fee' => 0.00,
-            'commission' => 0.00,
-            'currency' => 'USD',
-            'status' => 'completed',
-            'description' => 'إيداع نقدي بالدولار الأمريكي',
-        ]);
+            Transaction::create([
+                'user_id' => $user1->id,
+                'agent_id' => $agent->id,
+                'type' => 'deposit',
+                'amount' => 800.00,
+                'fee' => 0.00,
+                'commission' => 0.00,
+                'currency' => 'USD',
+                'status' => 'completed',
+                'description' => 'إيداع نقدي بالدولار الأمريكي',
+            ]);
+        }
 
-        // 9. Initial Seed Notifications
-        Notification::create([
-            'recipient_id' => $user1->id,
-            'recipient_type' => 'user',
-            'title' => 'مرحباً بك في المحفظة الإلكترونية',
-            'message' => 'تم تفعيل حسابك بنجاح وجاهز للاستخدام وتحويل وصرف العملات.',
-            'type' => 'alert',
-            'is_read' => false,
-        ]);
+        // 9. Initial Seed Notifications (only if empty)
+        if (Notification::count() === 0) {
+            Notification::create([
+                'recipient_id' => $user1->id,
+                'recipient_type' => 'user',
+                'title' => 'مرحباً بك في المحفظة الإلكترونية',
+                'message' => 'تم تفعيل حسابك بنجاح وجاهز للاستخدام وتحويل وصرف العملات.',
+                'type' => 'alert',
+                'is_read' => false,
+            ]);
+        }
     }
 }
