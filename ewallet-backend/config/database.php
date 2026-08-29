@@ -86,7 +86,7 @@ return [
 
         'pgsql' => [
             'driver' => 'pgsql',
-            'url' => env('DB_URL', env('DATABASE_URL')) ? str_replace('sslmode=requir&', 'sslmode=require&', str_replace('sslmode=requir"', 'sslmode=require"', rtrim(env('DB_URL', env('DATABASE_URL')), " \t\n\r\0\x0B\"'").(str_ends_with(env('DB_URL', env('DATABASE_URL')), 'sslmode=requir') ? 'e' : ''))) : null,
+            'url' => env('DB_URL', env('DATABASE_URL')) ? str_replace('requir', 'require', str_replace('requiree', 'require', env('DB_URL', env('DATABASE_URL')))) : null,
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '5432'),
             'database' => env('DB_DATABASE', 'laravel'),
