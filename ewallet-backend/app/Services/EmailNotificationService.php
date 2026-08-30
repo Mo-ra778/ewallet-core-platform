@@ -37,6 +37,34 @@ class EmailNotificationService
     }
 
     /**
+     * Send Password Reset OTP to the user via email
+     */
+    public static function sendPasswordResetOtp(User $user, string $otpCode): bool
+    {
+        if (empty($user->email)) {
+            return false;
+        }
+
+        $subject = '🔐 رمز استعادة كلمة المرور - محفظتي';
+        $htmlContent = self::buildEmailTemplate(
+            title: 'طلب استعادة كلمة المرور',
+            greeting: "عزيزي العميل {$user->full_name}",
+            leadText: 'تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك في المحفظة الإلكترونية. استخدم رمز الأمان أدناه لإتمام تعيين كلمة المرور الجديدة:',
+            otpCode: $otpCode,
+            validityMinutes: 10,
+            details: [
+                'اسم الحساب' => $user->full_name,
+                'رقم الهاتف' => $user->phone,
+                'البريد الإلكتروني' => $user->email,
+                'وقت الطلب' => now()->format('Y-m-d H:i:s'),
+            ],
+            securityNotice: '⚠️ تنبيه أمني: لا تشارك هذا الرمز مع أي شخص كائناً من كان. إذا لم تقم بطلب إعادة تعيين كلمة المرور، يرجى تغيير كلمة مرورك فوراً أو التواصل مع الدعم الفني.'
+        );
+
+        return self::sendRawEmail($user->email, $subject, $htmlContent);
+    }
+
+    /**
      * Send Cash-Out (Withdrawal) OTP to the user via email
      */
     public static function sendWithdrawalOtp(

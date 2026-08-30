@@ -62,7 +62,7 @@ class AuthController extends Controller
         // Send a welcome notification
         PushNotificationService::sendToUser(
             user: $user,
-            title: '👋 مرحباً بك في المحفظة الإلكترونية',
+            title: '👋 مرحباً بك في محفظة وافي باي  الإلكترونية',
             message: 'تم استلام طلب تسجيلك بنجاح، وهو قيد المراجعة من قبل الإدارة.',
             data: ['type' => 'welcome', 'status' => 'pending'],
             type: 'alert'
@@ -86,7 +86,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => $hasEmail 
+            'message' => $hasEmail
                 ? 'تم إنشاء الحساب بنجاح، وتم إرسال رمز تفعيل البريد الإلكتروني (OTP) إلى بريدك.'
                 : 'تم إنشاء الحساب بنجاح، حسابك قيد المراجعة بانتظار موافقة الإدارة.',
             'data' => [
@@ -382,6 +382,191 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'email_sent' => $sent,
                 'expires_in_seconds' => 600,
+            ],
+        ]);
+    }
+
+    /**
+     * Request Password Reset OTP (Forgot Password)
+     */
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'identifier' => 'nullable|string',
+            'email' => 'nullable|email',
+            'phone' => 'nullable|string',
+        ], [
+            'email.email' => 'يرجى إدخال بريد إلكتروني صالح.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+                'data' => $validator->errors(),
+            ], 422);
+        }
+
+        $input = trim((string) ($request->input('email') ?? $request->input('phone') ?? $request->input('identifier') ?? ''));
+
+        if (empty($input)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'يرجى إدخال البريد الإلكتروني أو رقم الهاتف المسجل لاستعادة كلمة المرور.',
+                'data' => null,
+            ], 422);
+        }
+
+        $user = User::where('email', $input)
+            ->orWhere('phone', $input)
+            ->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لم يتم العثور على أي حساب مسجل بهذه البيانات، يرجى التأكد وإعادة المحاولة.',
+                'data' => null,
+            ], 404);
+        }
+
+        if (empty($user->email)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'عذراً، هذا الحساب غير مربوط ببريد إلكتروني مفعل لاستلام رمز الأمان.',
+                'data' => null,
+            ], 422);
+        }
+
+        // Generate 6-digit OTP and store in Cache for 10 minutes (600 seconds)
+        $resetOtp = (string) random_int(100000, 999999);
+        Cache::put("password_reset_otp_{$user->id}", $resetOtp, 600);
+        Cache::put("password_reset_by_email_" . md5(strtolower($user->email)), [
+            'user_id' => $user->id,
+            'otp' => $resetOtp,
+        ], 600);
+
+        // Send professional email
+        $sent = EmailNotificationService::sendPasswordResetOtp($user, $resetOtp);
+
+        // Also send Push Notification if user has token
+        PushNotificationService::sendToUser(
+            user: $user,
+            title: '🔐 طلب استعادة كلمة المرور',
+            message: "تم طلب رمز استعادة كلمة المرور لحسابك. تفقد بريدك الإلكتروني ({$user->email}).",
+            data: ['type' => 'password_reset'],
+            type: 'alert'
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إرسال رمز استعادة كلمة المرور (OTP) إلى بريدك الإلكتروني بنجاح.',
+            'data' => [
+                'email' => $user->email,
+                'email_sent' => $sent,
+                'expires_in_seconds' => 600,
+            ],
+        ]);
+    }
+
+    /**
+     * Confirm OTP and Reset Password
+     */
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'otp' => 'required|string|size:6',
+            'password' => 'required|string|min:6',
+            'email' => 'nullable|email',
+            'phone' => 'nullable|string',
+            'identifier' => 'nullable|string',
+        ], [
+            'otp.required' => 'رمز التحقق (OTP) مطلوب.',
+            'otp.size' => 'يجب أن يتكون رمز التحقق من 6 أرقام.',
+            'password.required' => 'كلمة المرور الجديدة مطلوبة.',
+            'password.min' => 'يجب ألا تقل كلمة المرور عن 6 أحرف.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+                'data' => $validator->errors(),
+            ], 422);
+        }
+
+        $otp = trim((string) $request->input('otp'));
+        $newPassword = (string) $request->input('password');
+        $input = trim((string) ($request->input('email') ?? $request->input('phone') ?? $request->input('identifier') ?? ''));
+
+        $user = null;
+        if (!empty($input)) {
+            $user = User::where('email', $input)
+                ->orWhere('phone', $input)
+                ->first();
+        }
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لم يتم العثور على الحساب المطلوب لتغيير كلمة المرور.',
+                'data' => null,
+            ], 404);
+        }
+
+        // Validate OTP from cache
+        $cachedOtp = Cache::get("password_reset_otp_{$user->id}");
+        if (!$cachedOtp && !empty($user->email)) {
+            $lookup = Cache::get("password_reset_by_email_" . md5(strtolower($user->email)));
+            if (is_array($lookup) && isset($lookup['otp'])) {
+                $cachedOtp = $lookup['otp'];
+            }
+        }
+
+        if (!$cachedOtp) {
+            return response()->json([
+                'success' => false,
+                'message' => 'انتهت صلاحية رمز التحقق أو لم يتم طلبه، يرجى طلب رمز جديد.',
+                'data' => [
+                    'expired' => true,
+                ],
+            ], 400);
+        }
+
+        if ($cachedOtp !== $otp) {
+            return response()->json([
+                'success' => false,
+                'message' => 'رمز التحقق غير صحيح، يرجى التأكد من الرمز وإعادة المحاولة.',
+                'data' => [
+                    'invalid' => true,
+                ],
+            ], 400);
+        }
+
+        // Update password hash and clear reset cache
+        $user->update([
+            'password_hash' => Hash::make($newPassword),
+        ]);
+
+        Cache::forget("password_reset_otp_{$user->id}");
+        if (!empty($user->email)) {
+            Cache::forget("password_reset_by_email_" . md5(strtolower($user->email)));
+        }
+
+        // Notify user about successful password change
+        PushNotificationService::sendToUser(
+            user: $user,
+            title: '✅ تم تغيير كلمة المرور بنجاح',
+            message: 'تم تغيير كلمة المرور لحسابك في المحفظة بنجاح، يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.',
+            data: ['type' => 'password_changed'],
+            type: 'alert'
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إعادة تعيين كلمة المرور بنجاح! يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.',
+            'data' => [
+                'user_id' => $user->id,
+                'email' => $user->email,
             ],
         ]);
     }
