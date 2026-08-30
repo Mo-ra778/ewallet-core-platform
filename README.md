@@ -540,6 +540,28 @@ php artisan serve --host=0.0.0.0 --port=8000
 
 ---
 
+## 👨‍💻 المطور والمهندس المسؤول (Developer Profile)
+
+<div align="center">
+
+### **م. محمد رشاد أحمد محمد الإدريسي**
+*(Eng. Mohammed Rashad Al-Edrisi)*
+
+**مهندس ذكاء اصطناعي ومطور برمجيات متكامل ورائد أعمال (AI Engineer & Full-Stack Developer)**
+
+[![Portfolio](https://img.shields.io/badge/Portfolio-mohammed--edrees.vercel.app-0F766E?style=for-the-badge&logo=vercel&logoColor=white)](https://mohammed-edrees.vercel.app/)
+[![GitHub](https://img.shields.io/badge/GitHub-Mo--ra778-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Mo-ra778)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Mohammed%20Al--Edrisi-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/mohammed-al-edrisi-ba4292305)
+[![Twitter/X](https://img.shields.io/badge/Twitter%20%2F%20X-@AladreesiRashad-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/AladreesiRashad)
+[![Facebook](https://img.shields.io/badge/Facebook-mohammed.aledrisi-1877F2?style=for-the-badge&logo=facebook&logoColor=white)](https://www.facebook.com/mohammed.aledrisi.849013/)
+[![Instagram](https://img.shields.io/badge/Instagram-@m__rzi__0-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://instagram.com/m_rzi_0)
+[![WhatsApp](https://img.shields.io/badge/WhatsApp-+967784401779-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://wa.me/967784401779)
+[![Email](https://img.shields.io/badge/Email-mohammedalidrisi001@gmail.com-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:mohammedalidrisi001@gmail.com)
+
+</div>
+
+---
+
 ## 📄 رخصة الاستخدام والملكية الفكرية (License)
 
-تم تطوير هذا النظام المتكامل كمنظومة مالية ومصرفية رقمية تطبيقية متوافقة مع أعلى المعايير المصرفية العالمية لمشاريع التخرج والأنظمة المالية الرقمية. جميع الحقوق محفوظة © 2026.
+تم تطوير وهندسة هذا النظام المتكامل كمنظومة مالية ومصرفية رقمية تطبيقية متوافقة مع أعلى المعايير المصرفية العالمية للأنظمة المالية الرقمية ومشاريع التخرج المتميزة. جميع الحقوق محفوظة للمطور © 2026.
