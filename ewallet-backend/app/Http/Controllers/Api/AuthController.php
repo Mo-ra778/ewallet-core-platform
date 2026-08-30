@@ -11,6 +11,7 @@ use App\Services\PushNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
@@ -437,13 +438,25 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Generate 6-digit OTP and store in Cache for 10 minutes (600 seconds)
+        // Generate 6-digit OTP and store in both Cache and DB for 10 minutes (600 seconds)
         $resetOtp = (string) random_int(100000, 999999);
         Cache::put("password_reset_otp_{$user->id}", $resetOtp, 600);
         Cache::put("password_reset_by_email_" . md5(strtolower($user->email)), [
             'user_id' => $user->id,
             'otp' => $resetOtp,
         ], 600);
+
+        try {
+            DB::table('password_reset_tokens')->updateOrInsert(
+                ['phone' => $user->phone],
+                [
+                    'token' => $resetOtp,
+                    'created_at' => now(),
+                ]
+            );
+        } catch (\Throwable $e) {
+            // DB fallback handled
+        }
 
         // Send professional email
         $sent = EmailNotificationService::sendPasswordResetOtp($user, $resetOtp);
@@ -464,6 +477,105 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'email_sent' => $sent,
                 'expires_in_seconds' => 600,
+            ],
+        ]);
+    }
+
+    /**
+     * Verify Password Reset OTP (Separated Validation Step)
+     */
+    public function verifyResetOtp(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'otp' => 'required|string|size:6',
+            'email' => 'nullable|email',
+            'phone' => 'nullable|string',
+            'identifier' => 'nullable|string',
+        ], [
+            'otp.required' => 'رمز التحقق (OTP) مطلوب.',
+            'otp.size' => 'يجب أن يتكون رمز التحقق من 6 أرقام.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+                'data' => $validator->errors(),
+            ], 422);
+        }
+
+        $otp = trim((string) $request->input('otp'));
+        $input = trim((string) ($request->input('email') ?? $request->input('phone') ?? $request->input('identifier') ?? ''));
+
+        $user = null;
+        if (!empty($input)) {
+            $user = User::where('email', $input)
+                ->orWhere('phone', $input)
+                ->first();
+        }
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لم يتم العثور على الحساب المطلوب للتحقق من الرمز.',
+                'data' => null,
+            ], 404);
+        }
+
+        // Validate OTP from cache or DB
+        $cachedOtp = Cache::get("password_reset_otp_{$user->id}");
+        if (!$cachedOtp && !empty($user->email)) {
+            $lookup = Cache::get("password_reset_by_email_" . md5(strtolower($user->email)));
+            if (is_array($lookup) && isset($lookup['otp'])) {
+                $cachedOtp = $lookup['otp'];
+            }
+        }
+
+        // Fallback to database password_reset_tokens table (Valid within 10 minutes)
+        if (!$cachedOtp) {
+            try {
+                $dbToken = DB::table('password_reset_tokens')
+                    ->where('phone', $user->phone)
+                    ->first();
+
+                if ($dbToken && !empty($dbToken->token)) {
+                    $createdAt = \Carbon\Carbon::parse($dbToken->created_at);
+                    if ($createdAt->diffInMinutes(now()) <= 10) {
+                        $cachedOtp = (string) $dbToken->token;
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Ignore DB read failure
+            }
+        }
+
+        if (!$cachedOtp) {
+            return response()->json([
+                'success' => false,
+                'message' => 'انتهت صلاحية رمز التحقق أو لم يتم طلبه، يرجى طلب رمز جديد.',
+                'data' => [
+                    'expired' => true,
+                ],
+            ], 400);
+        }
+
+        if ($cachedOtp !== $otp) {
+            return response()->json([
+                'success' => false,
+                'message' => 'رمز التحقق غير صحيح، يرجى التأكد من الرمز وإعادة المحاولة.',
+                'data' => [
+                    'invalid' => true,
+                ],
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم التحقق من الرمز بنجاح! يمكنك الآن تعيين كلمة المرور الجديدة.',
+            'data' => [
+                'verified' => true,
+                'email' => $user->email,
+                'phone' => $user->phone,
             ],
         ]);
     }
@@ -513,12 +625,29 @@ class AuthController extends Controller
             ], 404);
         }
 
-        // Validate OTP from cache
+        // Validate OTP from cache or DB table
         $cachedOtp = Cache::get("password_reset_otp_{$user->id}");
         if (!$cachedOtp && !empty($user->email)) {
             $lookup = Cache::get("password_reset_by_email_" . md5(strtolower($user->email)));
             if (is_array($lookup) && isset($lookup['otp'])) {
                 $cachedOtp = $lookup['otp'];
+            }
+        }
+
+        if (!$cachedOtp) {
+            try {
+                $dbToken = DB::table('password_reset_tokens')
+                    ->where('phone', $user->phone)
+                    ->first();
+
+                if ($dbToken && !empty($dbToken->token)) {
+                    $createdAt = \Carbon\Carbon::parse($dbToken->created_at);
+                    if ($createdAt->diffInMinutes(now()) <= 10) {
+                        $cachedOtp = (string) $dbToken->token;
+                    }
+                }
+            } catch (\Throwable $e) {
+                // DB fallback
             }
         }
 
@@ -550,6 +679,11 @@ class AuthController extends Controller
         Cache::forget("password_reset_otp_{$user->id}");
         if (!empty($user->email)) {
             Cache::forget("password_reset_by_email_" . md5(strtolower($user->email)));
+        }
+        try {
+            DB::table('password_reset_tokens')->where('phone', $user->phone)->delete();
+        } catch (\Throwable $e) {
+            // Ignore
         }
 
         // Notify user about successful password change
