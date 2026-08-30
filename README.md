@@ -549,16 +549,31 @@ php artisan serve --host=0.0.0.0 --port=8000
 
 **مهندس ذكاء اصطناعي ومطور برمجيات متكامل ورائد أعمال (AI Engineer & Full-Stack Developer)**
 
-[![Portfolio](https://img.shields.io/badge/Portfolio-mohammed--edrees.vercel.app-0F766E?style=for-the-badge&logo=vercel&logoColor=white)](https://mohammed-edrees.vercel.app/)
-[![GitHub](https://img.shields.io/badge/GitHub-Mo--ra778-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Mo-ra778)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Mohammed%20Al--Edrisi-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/mohammed-al-edrisi-ba4292305)
-[![Twitter/X](https://img.shields.io/badge/Twitter%20%2F%20X-@AladreesiRashad-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/AladreesiRashad)
-[![Facebook](https://img.shields.io/badge/Facebook-mohammed.aledrisi-1877F2?style=for-the-badge&logo=facebook&logoColor=white)](https://www.facebook.com/mohammed.aledrisi.849013/)
-[![Instagram](https://img.shields.io/badge/Instagram-@m__rzi__0-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://instagram.com/m_rzi_0)
-[![WhatsApp](https://img.shields.io/badge/WhatsApp-+967784401779-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://wa.me/967784401779)
-[![Email](https://img.shields.io/badge/Email-mohammedalidrisi001@gmail.com-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:mohammedalidrisi001@gmail.com)
+<p align="center">
+  <a href="https://mohammed-edrees.vercel.app/"><img src="https://img.shields.io/badge/Portfolio-mohammed--edrees.vercel.app-0F766E?style=for-the-badge&logo=vercel&logoColor=white" alt="Portfolio" /></a>
+  <a href="https://github.com/Mo-ra778"><img src="https://img.shields.io/badge/GitHub-Mo--ra778-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub" /></a>
+  <a href="https://www.linkedin.com/in/mohammed-al-edrisi-ba4292305"><img src="https://img.shields.io/badge/LinkedIn-Mohammed%20Al--Edrisi-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white" alt="LinkedIn" /></a>
+  <a href="https://x.com/AladreesiRashad"><img src="https://img.shields.io/badge/Twitter%20%2F%20X-@AladreesiRashad-000000?style=for-the-badge&logo=x&logoColor=white" alt="Twitter/X" /></a>
+  <a href="https://www.facebook.com/mohammed.aledrisi.849013/"><img src="https://img.shields.io/badge/Facebook-mohammed.aledrisi-1877F2?style=for-the-badge&logo=facebook&logoColor=white" alt="Facebook" /></a>
+  <a href="https://instagram.com/m_rzi_0"><img src="https://img.shields.io/badge/Instagram-@m__rzi__0-E4405F?style=for-the-badge&logo=instagram&logoColor=white" alt="Instagram" /></a>
+  <a href="https://wa.me/967784401779"><img src="https://img.shields.io/badge/WhatsApp-+967784401779-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" alt="WhatsApp" /></a>
+  <a href="mailto:mohammedalidrisi001@gmail.com"><img src="https://img.shields.io/badge/Email-mohammedalidrisi001@gmail.com-D14836?style=for-the-badge&logo=gmail&logoColor=white" alt="Email" /></a>
+</p>
 
 </div>
+
+### 🌐 روابط التواصل المباشر (Direct Contact & Links):
+
+| المنصة (Platform) | الحساب والاسم | رابط الوصول المباشر (Clickable Direct Link) |
+| :--- | :--- | :--- |
+| 🌐 **الموقع الشخصي (Portfolio)** | موقع م. محمد الإدريسي | [https://mohammed-edrees.vercel.app](https://mohammed-edrees.vercel.app/) |
+| 🐙 **GitHub** | Mo-ra778 | [https://github.com/Mo-ra778](https://github.com/Mo-ra778) |
+| 💼 **LinkedIn** | Mohammed Al-Edrisi | [https://www.linkedin.com/in/mohammed-al-edrisi-ba4292305](https://www.linkedin.com/in/mohammed-al-edrisi-ba4292305) |
+| 🐦 **Twitter / X** | @AladreesiRashad | [https://x.com/AladreesiRashad](https://x.com/AladreesiRashad) |
+| 📘 **Facebook** | محمد رشاد الإدريسي | [https://www.facebook.com/mohammed.aledrisi.849013/](https://www.facebook.com/mohammed.aledrisi.849013/) |
+| 📸 **Instagram / Threads** | @m_rzi_0 | [https://instagram.com/m_rzi_0](https://instagram.com/m_rzi_0) |
+| 💬 **WhatsApp** | +967 784 401 779 | [https://wa.me/967784401779](https://wa.me/967784401779) |
+| ✉️ **البريد الإلكتروني (Email)** | mohammedalidrisi001@gmail.com | [mailto:mohammedalidrisi001@gmail.com](mailto:mohammedalidrisi001@gmail.com) |
 
 ---
 
