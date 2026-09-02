@@ -90,6 +90,7 @@ Route::prefix('admin')->group(function () {
         Route::get('/balance-adjustment', [AdminWebController::class, 'adjustBalanceForm'])->name('admin.balance.form');
         Route::post('/balance-adjustment', [AdminWebController::class, 'adjustBalance'])->name('admin.balance.adjust');
         Route::get('/transactions', [AdminWebController::class, 'transactions'])->name('admin.transactions');
+        Route::get('/revenues', [AdminWebController::class, 'revenues'])->name('admin.revenues');
         Route::get('/remittances', [AdminWebController::class, 'remittances'])->name('admin.remittances');
         Route::post('/remittances/{id}/cancel', [AdminWebController::class, 'cancelRemittance'])->name('admin.remittance.cancel');
         Route::get('/notifications', [AdminWebController::class, 'notifications'])->name('admin.notifications');

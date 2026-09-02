@@ -325,7 +325,7 @@ class AuthController extends Controller
                     'email' => $user->email,
                     'status' => $user->status,
                     'balance' => (float) $user->balance,
-                    'email_verified_at' => $user->email_verified_at->toIso8601String(),
+                    'email_verified_at' => $user->email_verified_at?->toIso8601String(),
                 ],
             ],
         ]);

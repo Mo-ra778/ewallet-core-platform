@@ -24,6 +24,7 @@ class User extends Authenticatable
         'balance_eur',
         'status',
         'push_token',
+        'email_verified_at',
     ];
 
     protected $hidden = [
@@ -39,6 +40,7 @@ class User extends Authenticatable
             'balance_sar' => 'decimal:2',
             'balance_usd' => 'decimal:2',
             'balance_eur' => 'decimal:2',
+            'email_verified_at' => 'datetime',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];

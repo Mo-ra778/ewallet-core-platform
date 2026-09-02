@@ -106,6 +106,14 @@
                         <span>دفتر الأستاذ العام (Audit)</span>
                     </a>
 
+                    <a href="{{ route('admin.revenues') }}" class="group relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 {{ request()->routeIs('admin.revenues') ? 'bg-brand-50 text-brand-800 font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
+                        @if(request()->routeIs('admin.revenues'))
+                            <span class="absolute right-0 top-2 bottom-2 w-1 bg-brand-600 rounded-l-full"></span>
+                        @endif
+                        <svg class="w-4 h-4 {{ request()->routeIs('admin.revenues') ? 'text-brand-600' : 'text-slate-400 group-hover:text-slate-600' }} transition-colors" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                        <span>خزينة وأرباح المنصة</span>
+                    </a>
+
                     <a href="{{ route('admin.remittances') }}" class="group relative flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 {{ request()->routeIs('admin.remittances*') ? 'bg-brand-50 text-brand-800 font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
                         @if(request()->routeIs('admin.remittances*'))
                             <span class="absolute right-0 top-2 bottom-2 w-1 bg-brand-600 rounded-l-full"></span>

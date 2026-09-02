@@ -89,6 +89,21 @@ class AdminWebController extends Controller
         $totalSystemBalance = $totalSystemCirculation;
         $activeUsers = $activeUsersCount;
 
+        // Calculate Platform Accumulated Revenue & Profits (Sum of transaction fees)
+        $platformRevenue = [
+            'YER' => (float) Transaction::where('status', 'completed')->where('currency', 'YER')->sum('fee'),
+            'SAR' => (float) Transaction::where('status', 'completed')->where('currency', 'SAR')->sum('fee'),
+            'USD' => (float) Transaction::where('status', 'completed')->where('currency', 'USD')->sum('fee'),
+            'EUR' => (float) Transaction::where('status', 'completed')->where('currency', 'EUR')->sum('fee'),
+        ];
+
+        $totalAgentCommissions = [
+            'YER' => (float) Transaction::where('status', 'completed')->where('currency', 'YER')->sum('commission'),
+            'SAR' => (float) Transaction::where('status', 'completed')->where('currency', 'SAR')->sum('commission'),
+            'USD' => (float) Transaction::where('status', 'completed')->where('currency', 'USD')->sum('commission'),
+            'EUR' => (float) Transaction::where('status', 'completed')->where('currency', 'EUR')->sum('commission'),
+        ];
+
         // Transaction Volume Stats
         $totalVolume = Transaction::where('status', 'completed')->sum('amount');
         $todayVolume = Transaction::where('status', 'completed')
@@ -115,6 +130,8 @@ class AdminWebController extends Controller
             'systemLiquidity',
             'totalSystemBalance',
             'totalSystemCirculation',
+            'platformRevenue',
+            'totalAgentCommissions',
             'totalVolume',
             'todayVolume',
             'pendingUsers',
@@ -804,6 +821,77 @@ class AdminWebController extends Controller
         });
 
         return back()->with('success', "تم إلغاء الحوالة رقم ({$remittance->remittance_code}) بنجاح واسترجاع المبلغ لحساب المرسل.");
+    }
+
+    /**
+     * Platform Treasury & Revenue Center
+     */
+    public function revenues(Request $request)
+    {
+        $currency = $request->query('currency');
+        $type = $request->query('type');
+        $search = $request->query('search');
+
+        // Total Revenues by Currency
+        $platformRevenue = [
+            'YER' => (float) Transaction::where('status', 'completed')->where('currency', 'YER')->sum('fee'),
+            'SAR' => (float) Transaction::where('status', 'completed')->where('currency', 'SAR')->sum('fee'),
+            'USD' => (float) Transaction::where('status', 'completed')->where('currency', 'USD')->sum('fee'),
+            'EUR' => (float) Transaction::where('status', 'completed')->where('currency', 'EUR')->sum('fee'),
+        ];
+
+        // Total Agent Commissions by Currency
+        $totalAgentCommissions = [
+            'YER' => (float) Transaction::where('status', 'completed')->where('currency', 'YER')->sum('commission'),
+            'SAR' => (float) Transaction::where('status', 'completed')->where('currency', 'SAR')->sum('commission'),
+            'USD' => (float) Transaction::where('status', 'completed')->where('currency', 'USD')->sum('commission'),
+            'EUR' => (float) Transaction::where('status', 'completed')->where('currency', 'EUR')->sum('commission'),
+        ];
+
+        // Total Revenues by Channel/Type
+        $channelStats = [
+            'transfer' => (float) Transaction::where('status', 'completed')->where('type', 'transfer')->sum('fee'),
+            'exchange' => (float) Transaction::where('status', 'completed')->where('type', 'exchange')->sum('fee'),
+            'withdraw' => (float) Transaction::where('status', 'completed')->where('type', 'withdraw')->sum('fee'),
+            'remittance' => (float) \App\Models\Remittance::where('status', 'paid')->sum('fee'),
+        ];
+
+        // Query Fee-generating Transactions
+        $query = Transaction::with(['user', 'agent', 'admin'])
+            ->where(function ($q) {
+                $q->where('fee', '>', 0)
+                  ->orWhere('commission', '>', 0);
+            });
+
+        if ($currency && in_array($currency, ['SAR', 'YER', 'USD', 'EUR'])) {
+            $query->where('currency', $currency);
+        }
+
+        if ($type && in_array($type, ['deposit', 'withdraw', 'transfer', 'exchange'])) {
+            $query->where('type', $type);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%{$search}%")
+                  ->orWhereHas('user', function ($uq) use ($search) {
+                      $uq->where('full_name', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $revenueTransactions = $query->orderBy('created_at', 'desc')->paginate(20);
+
+        return view('admin.revenues', compact(
+            'platformRevenue',
+            'totalAgentCommissions',
+            'channelStats',
+            'revenueTransactions',
+            'currency',
+            'type',
+            'search'
+        ));
     }
 }
 
